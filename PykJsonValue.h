@@ -37,11 +37,6 @@ public:
 		m_type = realValue;
 		m_value.m_real = d;
 	}
-	
-	CPykJsonValue(const char *p)
-	{
-		InitByString(p);
-	}
 
 	CPykJsonValue(const bool b)
 	{
@@ -62,6 +57,144 @@ public:
 	CPykJsonValue(CPykJsonValue &&value)
 	{
 		*this = std::forward<CPykJsonValue>(value);
+	}
+
+#define CHECKWANTVALUE if (bFindColon || !str.empty()) \
+return;
+#define DONNOTWANTVALUE bFindColon = false; str.clear();
+	CPykJsonValue(const char *pBegin, const char *pEnd = NULL, bool bParse = false)
+	{
+		if (!bParse)
+		{
+			InitByString(pBegin, pEnd);
+		}
+		else
+		{
+			if ('{' == *pBegin)
+			{
+				pBegin++;
+				m_type = mapValue;
+				m_value.m_map = new ObjectMap;
+				std::string str;
+				bool bFindColon = false;
+				for (; pBegin < pEnd; pBegin++)
+				{
+					switch (*pBegin)
+					{
+					case ' ':
+					{
+						continue;
+					}
+					case '\"':
+					{
+						const char *pFind = FindNextQuotes(++pBegin, pEnd);
+						if (!pFind)
+						{
+							return;
+						}
+						if (!bFindColon)
+						{
+							if (!str.empty())
+							{
+								return;
+							}
+							str = std::string(pBegin, pFind);
+
+						}
+						else
+						{
+							bFindColon = false;
+							(*m_value.m_map)[str] = (pBegin, pFind);
+							str.clear();
+						}
+						pBegin = pFind + 1;
+						continue;
+					}
+					case ':':
+					{
+						if (str.empty())
+						{
+							return;
+						}
+						if (bFindColon)
+						{
+							return;
+						}
+						bFindColon = true;
+						continue;
+					}
+					case ',':
+					{
+						if (bFindColon || !str.empty())
+						{
+							return;
+						}
+						continue;
+					}
+					case '{':
+					{
+						CHECKWANTVALUE;
+						const char *pFind = FindNextSame(pBegin, pEnd, '}');
+						if (!pFind)
+						{
+							return;
+						}
+						(*m_value.m_map)[str] = (pBegin, pFind + 1, true);
+						DONNOTWANTVALUE;
+						pBegin = pFind + 1;
+						continue;
+					}
+					case '[':
+					{
+						CHECKWANTVALUE;
+						const char *pFind = FindNextSame(pBegin, pEnd, ']');
+						if (!pFind)
+						{
+							return;
+						}
+						(*m_value.m_map)[str] = (pBegin, pFind + 1, true);
+						DONNOTWANTVALUE;
+						pBegin = pFind + 1;
+						continue;
+					}
+					default:
+					{
+						CHECKWANTVALUE;
+						const char *pFind = FindEndChar(pBegin, pEnd);
+						if (!pFind)
+						{
+							return;
+						}
+						std::string value(pBegin, pFind);
+						if (-1 != value.find('.'))
+						{
+							(*m_value.m_map)[str] = atof(value.c_str());
+						}
+						else if ('-' == *pBegin)
+						{
+							(*m_value.m_map)[str] = atoi(value.c_str());
+						}
+						else if(isdigit(*pBegin))
+						{
+							(*m_value.m_map)[str] = atoi(value.c_str());
+						}
+						else if (value.compare("null"))
+						{
+							(*m_value.m_map)[str] = CPykJsonValue();
+						}
+						else
+						{
+							return;
+						}
+						
+						DONNOTWANTVALUE;
+						pBegin = pFind + 1;
+						continue;
+					}
+					}
+				}
+			}
+		}
 	}
 
 	~CPykJsonValue()
@@ -435,19 +568,28 @@ private:
 		ObjectVec *m_ver;
 	} m_value;
 
-	void InitByString(const char* p)
+	void InitByString(const char* pBegin, const char *pEnd = NULL)
 	{
-		if (!p)
+		if (!pBegin)
 		{
 			m_type = nullValue;
 		}
 		else
 		{
 			m_type = stringValue;
-			int nLen = strlen(p);
+			int nLen = 0;
+			if (!pEnd)
+			{
+				nLen = strlen(pBegin);
+			}
+			else
+			{
+				nLen = pEnd - pBegin;
+			}
+			
 			m_value.m_string = new char[nLen + 1];
 			memset(m_value.m_string, 0, nLen + 1);
-			strcpy_s(m_value.m_string, nLen + 1, p);
+			strncpy_s(m_value.m_string, nLen + 1, pBegin, nLen);
 		}
 	}
 
@@ -469,6 +611,73 @@ private:
 		}
 		m_type = nullValue;
 		memset(&m_value, 0, sizeof(ValueHolder));
+	}
+
+	const char *FindNextQuotes(const char *pBegin, const char *pEnd)
+	{
+		for (; pBegin < pEnd; pBegin++)
+		{
+			if ('\"' == *pBegin &&
+				'\\' != *(pBegin - 1))
+			{
+				return pBegin;
+			}
+		}
+		return NULL;
+	}
+
+	const char *FindColon(const char *&pBegin, const char *pEnd)
+	{
+		for (; pBegin < pEnd; pBegin++)
+		{
+			if (' ' == *pBegin)
+			{
+				continue;
+			}
+			if (':' == *pBegin)
+			{
+				return pBegin;
+			}
+			break;
+		}
+		return NULL;
+	}
+
+	const char *FindNextSame(const char *pBegin, const char *pEnd, char EndChar)
+	{
+		char begin = *pBegin;
+		int nTime = 0;
+		for (; pBegin < pEnd; pBegin++)
+		{
+			if (begin == *pBegin)
+			{
+				nTime++;
+				continue;
+			}
+			if (EndChar == *pBegin)
+			{
+				if (0 == --nTime)
+				{
+					return pBegin;
+				}
+			}
+		}
+		return NULL;
+	}
+	
+	const char *FindEndChar(const char *pBegin, const char *pEnd)
+	{
+		for (; pBegin < pEnd; pBegin++)
+		{
+			if (',' == *pBegin ||
+				'}' == *pBegin ||
+				']' == *pBegin ||
+				' ' == *pBegin)
+			{
+				return pBegin;
+			}
+		}
+		return NULL;
 	}
 };
 
