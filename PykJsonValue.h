@@ -1,5 +1,9 @@
 #pragma once
 #include <map>
+#include <cassert>
+
+class CPykJsonRead;
+
 class CPykJsonValue
 {
 public:
@@ -49,152 +53,27 @@ public:
 
 	}
 
-	CPykJsonValue(const CPykJsonValue &value)
+	CPykJsonValue(const CPykJsonValue &value) : CPykJsonValue()
 	{
 		*this = value;
 	}
 
-	CPykJsonValue(CPykJsonValue &&value)
+	CPykJsonValue(CPykJsonValue &&value) : CPykJsonValue()
 	{
 		*this = std::forward<CPykJsonValue>(value);
 	}
 
-#define CHECKWANTVALUE if (bFindColon || !str.empty()) \
-return;
-#define DONNOTWANTVALUE bFindColon = false; str.clear();
-	CPykJsonValue(const char *pBegin, const char *pEnd = NULL, bool bParse = false)
+#define CHECKWANTVALUE if (str.empty()) \
+return std::forward<CPykJsonValue>(value);
+#define DONNOTWANTVALUE str.clear();
+	CPykJsonValue(const char *pBegin, const char *pEnd = NULL)
 	{
-		if (!bParse)
-		{
-			InitByString(pBegin, pEnd);
-		}
-		else
-		{
-			if ('{' == *pBegin)
-			{
-				pBegin++;
-				m_type = mapValue;
-				m_value.m_map = new ObjectMap;
-				std::string str;
-				bool bFindColon = false;
-				for (; pBegin < pEnd; pBegin++)
-				{
-					switch (*pBegin)
-					{
-					case ' ':
-					{
-						continue;
-					}
-					case '\"':
-					{
-						const char *pFind = FindNextQuotes(++pBegin, pEnd);
-						if (!pFind)
-						{
-							return;
-						}
-						if (!bFindColon)
-						{
-							if (!str.empty())
-							{
-								return;
-							}
-							str = std::string(pBegin, pFind);
+		InitByString(pBegin, pEnd);
+	}
 
-						}
-						else
-						{
-							bFindColon = false;
-							(*m_value.m_map)[str] = (pBegin, pFind);
-							str.clear();
-						}
-						pBegin = pFind + 1;
-						continue;
-					}
-					case ':':
-					{
-						if (str.empty())
-						{
-							return;
-						}
-						if (bFindColon)
-						{
-							return;
-						}
-						bFindColon = true;
-						continue;
-					}
-					case ',':
-					{
-						if (bFindColon || !str.empty())
-						{
-							return;
-						}
-						continue;
-					}
-					case '{':
-					{
-						CHECKWANTVALUE;
-						const char *pFind = FindNextSame(pBegin, pEnd, '}');
-						if (!pFind)
-						{
-							return;
-						}
-						(*m_value.m_map)[str] = (pBegin, pFind + 1, true);
-						DONNOTWANTVALUE;
-						pBegin = pFind + 1;
-						continue;
-					}
-					case '[':
-					{
-						CHECKWANTVALUE;
-						const char *pFind = FindNextSame(pBegin, pEnd, ']');
-						if (!pFind)
-						{
-							return;
-						}
-						(*m_value.m_map)[str] = (pBegin, pFind + 1, true);
-						DONNOTWANTVALUE;
-						pBegin = pFind + 1;
-						continue;
-					}
-					default:
-					{
-						CHECKWANTVALUE;
-						const char *pFind = FindEndChar(pBegin, pEnd);
-						if (!pFind)
-						{
-							return;
-						}
-						std::string value(pBegin, pFind);
-						if (-1 != value.find('.'))
-						{
-							(*m_value.m_map)[str] = atof(value.c_str());
-						}
-						else if ('-' == *pBegin)
-						{
-							(*m_value.m_map)[str] = atoi(value.c_str());
-						}
-						else if(isdigit(*pBegin))
-						{
-							(*m_value.m_map)[str] = atoi(value.c_str());
-						}
-						else if (value.compare("null"))
-						{
-							(*m_value.m_map)[str] = CPykJsonValue();
-						}
-						else
-						{
-							return;
-						}
-						
-						DONNOTWANTVALUE;
-						pBegin = pFind + 1;
-						continue;
-					}
-					}
-				}
-			}
-		}
+	CPykJsonValue(const std::string &str) : CPykJsonValue(str.c_str(), str.c_str() + str.length())
+	{
+
 	}
 
 	~CPykJsonValue()
@@ -204,37 +83,22 @@ return;
 
 	operator int() const
 	{
-		if (intValue == m_type)
-		{
-			return m_value.m_int;
-		}
-		else if (uintValue == m_type)
-		{
-			return m_value.m_uint;
-		}
-		return 0;
+		return ReturnNum<int>();
 	}
 
 	operator unsigned int() const
 	{
-		if (uintValue == m_type)
-		{
-			return m_value.m_uint;
-		}
-		else if (intValue == m_type)
-		{
-			return m_value.m_int;
-		}
-		return 0;
+		return ReturnNum<unsigned int>();
 	}
 
 	operator double() const
 	{
-		if (realValue == m_type)
-		{
-			return m_value.m_real;
-		}
-		return 0;
+		return ReturnNum<double>();
+	}
+
+	operator bool() const
+	{
+		return ReturnNum<bool>();
 	}
 
 	operator const char *() const
@@ -246,6 +110,7 @@ return;
 		return "";
 	}
 
+	//map 对象获取数据，在没有匹配时返回匿名对象
 	CPykJsonValue& operator ()(const char *pName)
 	{
 		if (!pName)
@@ -263,6 +128,7 @@ return;
 		return CPykJsonValue();
 	}
 
+	//map 对象获取数据，在没有匹配时返回新增数据
 	CPykJsonValue& operator [](const char *pName)
 	{
 		if (!pName)
@@ -283,6 +149,7 @@ return;
 		return CPykJsonValue();
 	}
 
+	//获取数组数据
 	CPykJsonValue& operator [](int nNum)
 	{
 		if (arrayValue == m_type &&
@@ -294,6 +161,7 @@ return;
 		return CPykJsonValue();
 	}
 
+	//复制构造函数
 	CPykJsonValue& operator =(const CPykJsonValue & value)
 	{
 		Reset();
@@ -316,7 +184,7 @@ return;
 		}
 		return *this;
 	}
-
+	//移动构造函数
 	CPykJsonValue& operator =(CPykJsonValue && value)
 	{
 		Reset();
@@ -337,15 +205,14 @@ return;
 		value.m_type = nullValue;
 		return *this;
 	}
-
+	//获取josn类型
 	ValueType GetType()
 	{
 		return m_type;
 	}
-
+	//获取数组和对象的大小
 	int Size()
 	{
-		int ret = 0;
 		switch (m_type)
 		{
 		case CPykJsonValue::intValue:
@@ -353,16 +220,15 @@ return;
 		case CPykJsonValue::realValue:
 		case CPykJsonValue::booleanValue:
 		case CPykJsonValue::stringValue:
-			ret = 1;
-			break;
+			return 1;
 		case CPykJsonValue::mapValue:
 		{
-			ret = (*m_value.m_map).size();
+			return (int)(*m_value.m_map).size();
 			break;
 		}
 		case CPykJsonValue::arrayValue:
 		{
-			ret = (*m_value.m_ver).size();
+			return (int)(*m_value.m_ver).size();
 			break;
 		}
 		default:
@@ -370,7 +236,7 @@ return;
 		}
 		return 1;
 	}
-
+	//数组添加数据
 	CPykJsonValue & Append(const CPykJsonValue &value)
 	{
 		if (nullValue == m_type)
@@ -385,7 +251,7 @@ return;
 		}
 		return *this;
 	}
-
+	//数据添加可移动数据
 	CPykJsonValue & Append(CPykJsonValue &&value)
 	{
 		if (nullValue == m_type)
@@ -400,85 +266,25 @@ return;
 		}
 		return *this;
 	}
-
+	//转化为int
 	int as_int(int def = 0)
 	{
-		switch (m_type)
-		{
-		case CPykJsonValue::intValue:
-			return m_value.m_int;
-		case CPykJsonValue::uintValue:
-			return m_value.m_uint;
-		case CPykJsonValue::realValue:
-			return m_value.m_real;
-		case CPykJsonValue::booleanValue:
-			return m_value.m_bool;
-		case CPykJsonValue::stringValue:
-			return atoi(m_value.m_string);
-		default:
-			break;
-		}
-		return def;
+		return ReturnNum<int>(def);
 	}
 
 	unsigned int as_uint(unsigned int def = 0)
 	{
-		switch (m_type)
-		{
-		case CPykJsonValue::intValue:
-			return m_value.m_int;
-		case CPykJsonValue::uintValue:
-			return m_value.m_uint;
-		case CPykJsonValue::realValue:
-			return m_value.m_real;
-		case CPykJsonValue::booleanValue:
-			return m_value.m_bool;
-		case CPykJsonValue::stringValue:
-			return atoi(m_value.m_string);
-		default:
-			break;
-		}
-		return def;
+		return ReturnNum<unsigned int>(def);
 	}
 
 	double as_double(double def = 0)
 	{
-		switch (m_type)
-		{
-		case CPykJsonValue::intValue:
-			return m_value.m_int;
-		case CPykJsonValue::uintValue:
-			return m_value.m_uint;
-		case CPykJsonValue::realValue:
-			return m_value.m_real;
-		case CPykJsonValue::booleanValue:
-			return m_value.m_bool;
-		case CPykJsonValue::stringValue:
-			return atof(m_value.m_string);
-		default:
-			break;
-		}
-		return def;
+		return ReturnNum<double>(def);
 	}
 
 	bool as_bool(bool def = 0)
 	{
-		switch (m_type)
-		{
-		case CPykJsonValue::intValue:
-			return 0 == m_value.m_int;
-		case CPykJsonValue::uintValue:
-			return 0 == m_value.m_uint;
-		case CPykJsonValue::realValue:
-			return 0 == m_value.m_real;
-		case CPykJsonValue::booleanValue:
-			return m_value.m_bool;
-		case CPykJsonValue::stringValue:
-			return 0 == atoi(m_value.m_string);
-		default:
-			break;
-		}
-		return def;
+		return ReturnNum<bool>(def);
 	}
 
 	std::string as_string(std::string def = "")
@@ -487,6 +293,8 @@ return;
 		
 		switch (m_type)
 		{
+		case CPykJsonValue::nullValue:
+			return "null";
 		case CPykJsonValue::intValue:
 			sprintf_s(cTemp, "%d", m_value.m_int);
 			break;
@@ -497,10 +305,19 @@ return;
 			sprintf_s(cTemp, "%f", m_value.m_real);
 			break;
 		case CPykJsonValue::booleanValue:
-			m_value.m_bool ? cTemp[0] = '1' : cTemp[0] = '0';
+			return m_value.m_bool ? "true" : "false";
 			break;
 		case CPykJsonValue::stringValue:
-			return m_value.m_string;
+		{
+			std::string str = m_value.m_string;
+			size_t size = 0;
+			while ((size = str.find('\"', size)) != string::npos)
+			{
+				str.insert(size, 1, '\\');
+				size += 2;
+			}
+			return str;
+		}
 		case CPykJsonValue::mapValue:
 		{
 			string str;
@@ -523,7 +340,14 @@ return;
 				}
 				str += ",";
 			}
-			str[str.length() - 1] = '}';
+			if (',' == str[str.length() - 1])
+			{
+				str[str.length() - 1] = '}';
+			}
+			else
+			{
+				str += "}";
+			}
 			return str;
 		}
 		case CPykJsonValue::arrayValue:
@@ -544,7 +368,14 @@ return;
 				}
 				str += ",";
 			}
-			str[str.length() - 1] = ']';
+			if (',' == str[str.length() - 1])
+			{
+				str[str.length() - 1] = ']';
+			}
+			else
+			{
+				str += "]";
+			}
 			return str;
 		}
 		default:
@@ -554,6 +385,7 @@ return;
 	}
 
 private:
+	friend CPykJsonRead;
 	typedef std::map<std::string, CPykJsonValue> ObjectMap;
 	typedef std::vector<CPykJsonValue> ObjectVec;
 	ValueType m_type;
@@ -580,16 +412,20 @@ private:
 			int nLen = 0;
 			if (!pEnd)
 			{
-				nLen = strlen(pBegin);
+				nLen = (int)strlen(pBegin);
 			}
 			else
 			{
-				nLen = pEnd - pBegin;
+				nLen = (int)(pEnd - pBegin);
 			}
 			
 			m_value.m_string = new char[nLen + 1];
 			memset(m_value.m_string, 0, nLen + 1);
 			strncpy_s(m_value.m_string, nLen + 1, pBegin, nLen);
+			while(char *pFind = strstr(m_value.m_string, "\\\""))
+			{
+				memmove_s(pFind, nLen + 1 - (pFind - m_value.m_string), pFind + 1, nLen - (pFind - m_value.m_string));
+			};
 		}
 	}
 
@@ -613,71 +449,41 @@ private:
 		memset(&m_value, 0, sizeof(ValueHolder));
 	}
 
-	const char *FindNextQuotes(const char *pBegin, const char *pEnd)
+	template<class T>
+	T ReturnNum(T def = 0) const
 	{
-		for (; pBegin < pEnd; pBegin++)
+#pragma warning(push)
+#pragma warning(disable:4244)
+		if (booleanValue == m_type)
 		{
-			if ('\"' == *pBegin &&
-				'\\' != *(pBegin - 1))
+			return m_value.m_bool ? 1 : 0;
+		}
+		else if (uintValue == m_type)
+		{
+			return m_value.m_uint;
+		}
+		else if (intValue == m_type)
+		{
+			return m_value.m_int;
+		}
+		else if (realValue == m_type)
+		{
+			return m_value.m_real;
+		}
+		else if (stringValue == m_type)
+		{
+			if (strchr(m_value.m_string, '.'))
 			{
-				return pBegin;
+				return atof(m_value.m_string);
+			}
+			else
+			{
+				return atoi(m_value.m_string);
 			}
 		}
-		return NULL;
-	}
+#pragma warning(pop)
 
-	const char *FindColon(const char *&pBegin, const char *pEnd)
-	{
-		for (; pBegin < pEnd; pBegin++)
-		{
-			if (' ' == *pBegin)
-			{
-				continue;
-			}
-			if (':' == *pBegin)
-			{
-				return pBegin;
-			}
-			break;
-		}
-		return NULL;
-	}
-
-	const char *FindNextSame(const char *pBegin, const char *pEnd, char EndChar)
-	{
-		char begin = *pBegin;
-		int nTime = 0;
-		for (; pBegin < pEnd; pBegin++)
-		{
-			if (begin == *pBegin)
-			{
-				nTime++;
-				continue;
-			}
-			if (EndChar == *pBegin)
-			{
-				if (0 == --nTime)
-				{
-					return pBegin;
-				}
-			}
-		}
-		return NULL;
-	}
-	
-	const char *FindEndChar(const char *pBegin, const char *pEnd)
-	{
-		for (; pBegin < pEnd; pBegin++)
-		{
-			if (',' == *pBegin ||
-				'}' == *pBegin ||
-				']' == *pBegin ||
-				' ' == *pBegin)
-			{
-				return pBegin;
-			}
-		}
-		return NULL;
+		return def;
 	}
 };
 
