@@ -5,38 +5,49 @@
 class CPykJsonRead
 {
 public:
-	bool parse(const std::string &str)
+	bool parse(const char *pBegin, CPykJsonValue &value)
 	{
-
+		return parse(pBegin, pBegin + strlen(pBegin), value);
 	}
+
+	bool parse(const char *pBegin, const char *pEnd, _PykJsonValue &value)
+	{
+		m_pBegin = pBegin;
+		m_pEnd = pEnd;
+		value = ReadValue();
+		return true;
+	}
+
 	bool parse(const char *pBegin, const char *pEnd, CPykJsonValue &value)
 	{
 		m_pBegin = pBegin;
 		m_pEnd = pEnd;
-		value = ReadMap();
+		_PykJsonValue *p = new _PykJsonValue(ReadValue());
+		CPykJsonValue valueTemp(std::shared_ptr<_PykJsonValue>(p), p);
+		value = valueTemp;
 		return true;
 	}
 private:
-	CPykJsonValue ReadMap()
+	_PykJsonValue ReadMap()
 	{
 		assert(*m_pBegin == '{');
-		CPykJsonValue value;
+		_PykJsonValue value;
 		m_pBegin++;
-		value.m_type = CPykJsonValue::ValueType::mapValue;
-		value.m_value.m_map = new CPykJsonValue::ObjectMap;
+		value.m_type = ValueType::mapValue;
+		value.m_value.m_map = new _PykJsonValue::ObjectMap;
 		for (; m_pBegin < m_pEnd;)
 		{
+			if (IsNoMeanChar(*m_pBegin))
+			{
+				m_pBegin++;
+				continue;
+			}
 			switch (*m_pBegin)
 			{
 			case '}':
 			{
 				m_pBegin++;
 				return value;
-			}
-			case ' ':
-			{
-				m_pBegin++;
-				continue;
 			}
 			case '\"':
 			{
@@ -47,9 +58,7 @@ private:
 				{
 					return value;
 				}
-				m_pBegin++;
 				SkipSpaceAndColon();
-
 				(*value.m_value.m_map)[{pStr, pFind}] = ReadValue();
 				SkipSpaceAndComma();
 				continue;
@@ -64,12 +73,12 @@ private:
 		return value;
 	}
 
-	CPykJsonValue ReadArray()
+	_PykJsonValue ReadArray()
 	{
-		CPykJsonValue value;
+		_PykJsonValue value;
 		m_pBegin++;
-		value.m_type = CPykJsonValue::ValueType::arrayValue;
-		value.m_value.m_ver = new CPykJsonValue::ObjectVec;
+		value.m_type = ValueType::arrayValue;
+		value.m_value.m_ver = new _PykJsonValue::ObjectVec;
 		for (; m_pBegin < m_pEnd;)
 		{
 			switch (*m_pBegin)
@@ -90,22 +99,22 @@ private:
 		return value;
 	}
 
-	CPykJsonValue ReadValue()
+	_PykJsonValue ReadValue()
 	{
 		for (; m_pBegin < m_pEnd;)
 		{
-			switch (*m_pBegin)
-			{
-			case ' ':
+			if (IsNoMeanChar(*m_pBegin))
 			{
 				m_pBegin++;
 				continue;
 			}
+			switch (*m_pBegin)
+			{
 			case '\"':
 			{
 				m_pBegin++;
 				const char *pStr = m_pBegin;
-				return CPykJsonValue(pStr, FindNextQuotes());
+				return _PykJsonValue(pStr, FindNextQuotes());
 			}
 			case '{':
 			{
@@ -131,31 +140,33 @@ private:
 			}
 			case 'n':
 			{
-				assert(0 == strcmp(m_pBegin, "null"));
+				assert(0 == strncmp(m_pBegin, "null", strlen("null")));
 				m_pBegin += strlen("null");
-				return CPykJsonValue();
+				return _PykJsonValue();
 			}
 			case 't':
 			{
-				assert(0 == strcmp(m_pBegin, "true"));
-				return CPykJsonValue(true);
+				assert(0 == strncmp(m_pBegin, "true", strlen("true")));
+				m_pBegin += strlen("true");
+				return _PykJsonValue(true);
 			}
 			case 'f':
 			{
-				assert(0 == strcmp(m_pBegin, "false"));
-				return CPykJsonValue(false);
+				assert(0 == strncmp(m_pBegin, "false", strlen("false")));
+				m_pBegin += strlen("false");
+				return _PykJsonValue(false);
 			}
 			default:
 			{
 				assert(false);
-				return CPykJsonValue();
+				return _PykJsonValue();
 			}
 			}
 		}
-		return CPykJsonValue();
+		return _PykJsonValue();
 	}
 
-	CPykJsonValue ReadNum()
+	_PykJsonValue ReadNum()
 	{
 		const char *p = m_pBegin;
 		bool bDouble = false;
@@ -172,16 +183,16 @@ private:
 			{
 				if (bDouble)
 				{
-					return CPykJsonValue(atof(p));
+					return _PykJsonValue(atof(p));
 				}
 				else
 				{
-					return CPykJsonValue(atoi(p));
+					return _PykJsonValue(atoi(p));
 				}
 			}
 		}
 		assert(false);
-		return CPykJsonValue();
+		return _PykJsonValue();
 	}
 
 	const char *FindNextQuotes()
@@ -203,7 +214,7 @@ private:
 		bool bFind = false;
 		for (; m_pBegin < m_pEnd; m_pBegin++)
 		{
-			if (' ' == *m_pBegin)
+			if (IsNoMeanChar(*m_pBegin))
 			{
 				continue;
 			}
@@ -228,7 +239,7 @@ private:
 		bool bFind = false;
 		for (; m_pBegin < m_pEnd; m_pBegin++)
 		{
-			if (' ' == *m_pBegin)
+			if (IsNoMeanChar(*m_pBegin))
 			{
 				continue;
 			}
@@ -241,6 +252,18 @@ private:
 			assert(bFind);
 			return;
 		}
+	}
+
+	bool IsNoMeanChar(char c)
+	{
+		if (' ' == c ||
+			'\n' == c ||
+			'\t' == c ||
+			'\r' == c)
+		{
+			return true;
+		}
+		return false;
 	}
 
 	const char *m_pBegin;
