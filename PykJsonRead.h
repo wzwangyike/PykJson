@@ -1,16 +1,16 @@
 #pragma once
 
 #include "PykJsonValue.h"
-
+#include <cassert>
 class CPykJsonRead
 {
 public:
-	bool parse(const char *pBegin, CPykJsonValue &value)
+	bool parse(const char *pBegin, CPykJsonValueEx &value)
 	{
 		return parse(pBegin, pBegin + strlen(pBegin), value);
 	}
 
-	bool parse(const char *pBegin, const char *pEnd, _PykJsonValue &value)
+	bool parse(const char *pBegin, const char *pEnd, CPykJsonValue &value)
 	{
 		m_pBegin = pBegin;
 		m_pEnd = pEnd;
@@ -18,23 +18,23 @@ public:
 		return true;
 	}
 
-	bool parse(const char *pBegin, const char *pEnd, CPykJsonValue &value)
+	bool parse(const char *pBegin, const char *pEnd, CPykJsonValueEx &value)
 	{
 		m_pBegin = pBegin;
 		m_pEnd = pEnd;
-		_PykJsonValue *p = new _PykJsonValue(ReadValue());
-		CPykJsonValue valueTemp(std::shared_ptr<_PykJsonValue>(p), p);
+		CPykJsonValue *p = new CPykJsonValue(ReadValue());
+		CPykJsonValueEx valueTemp(std::shared_ptr<CPykJsonValue>(p), p);
 		value = valueTemp;
 		return true;
 	}
 private:
-	_PykJsonValue ReadMap()
+	CPykJsonValue ReadMap()
 	{
 		assert(*m_pBegin == '{');
-		_PykJsonValue value;
+		CPykJsonValue value;
 		m_pBegin++;
 		value.m_type = ValueType::mapValue;
-		value.m_value.m_map = new _PykJsonValue::ObjectMap;
+		value.m_value.m_map = new CPykJsonValue::ObjectMap;
 		for (; m_pBegin < m_pEnd;)
 		{
 			if (IsNoMeanChar(*m_pBegin))
@@ -73,12 +73,12 @@ private:
 		return value;
 	}
 
-	_PykJsonValue ReadArray()
+	CPykJsonValue ReadArray()
 	{
-		_PykJsonValue value;
+		CPykJsonValue value;
 		m_pBegin++;
 		value.m_type = ValueType::arrayValue;
-		value.m_value.m_ver = new _PykJsonValue::ObjectVec;
+		value.m_value.m_ver = new CPykJsonValue::ObjectVec;
 		for (; m_pBegin < m_pEnd;)
 		{
 			switch (*m_pBegin)
@@ -99,7 +99,7 @@ private:
 		return value;
 	}
 
-	_PykJsonValue ReadValue()
+	CPykJsonValue ReadValue()
 	{
 		for (; m_pBegin < m_pEnd;)
 		{
@@ -114,7 +114,7 @@ private:
 			{
 				m_pBegin++;
 				const char *pStr = m_pBegin;
-				return _PykJsonValue(pStr, FindNextQuotes());
+				return CPykJsonValue(pStr, FindNextQuotes());
 			}
 			case '{':
 			{
@@ -142,31 +142,31 @@ private:
 			{
 				assert(0 == strncmp(m_pBegin, "null", strlen("null")));
 				m_pBegin += strlen("null");
-				return _PykJsonValue();
+				return CPykJsonValue();
 			}
 			case 't':
 			{
 				assert(0 == strncmp(m_pBegin, "true", strlen("true")));
 				m_pBegin += strlen("true");
-				return _PykJsonValue(true);
+				return CPykJsonValue(true);
 			}
 			case 'f':
 			{
 				assert(0 == strncmp(m_pBegin, "false", strlen("false")));
 				m_pBegin += strlen("false");
-				return _PykJsonValue(false);
+				return CPykJsonValue(false);
 			}
 			default:
 			{
 				assert(false);
-				return _PykJsonValue();
+				return CPykJsonValue();
 			}
 			}
 		}
-		return _PykJsonValue();
+		return CPykJsonValue();
 	}
 
-	_PykJsonValue ReadNum()
+	CPykJsonValue ReadNum()
 	{
 		const char *p = m_pBegin;
 		bool bDouble = false;
@@ -183,16 +183,16 @@ private:
 			{
 				if (bDouble)
 				{
-					return _PykJsonValue(atof(p));
+					return CPykJsonValue(atof(p));
 				}
 				else
 				{
-					return _PykJsonValue(atoi(p));
+					return CPykJsonValue(atoi(p));
 				}
 			}
 		}
 		assert(false);
-		return _PykJsonValue();
+		return CPykJsonValue();
 	}
 
 	const char *FindNextQuotes()
