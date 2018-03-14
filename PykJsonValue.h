@@ -192,9 +192,19 @@ public:
 	//获取数组数据
 	CPykJsonValue* operator [](int nNum)
 	{
-		if (arrayValue == m_type &&
-			(*m_value.m_ver).size() > nNum)
+		if (arrayValue == m_type)
 		{
+			size_t size = (*m_value.m_ver).size();
+			if (nNum < 0)
+			{
+				if ((size_t)abs(nNum) > size)
+				{
+					return NULL;
+				}
+				return &(*m_value.m_ver)[size + nNum];
+			}
+			if ((size_t)nNum >= size)
+				return NULL;
 			return &(*m_value.m_ver)[nNum];
 		}
 
