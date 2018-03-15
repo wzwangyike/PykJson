@@ -3,114 +3,102 @@
 #include "PykPointer.h"
 
 template <class T>
-class CPykJsonPointer : public CPykPointer<T>
+class CPykJsonPointer : public CPykSharePointer<T>
 {
 public:
-	using CPykPointer::CPykPointer;
-	using CPykPointer::operator=;
+	using CPykSharePointer<T>::CPykSharePointer;
+	using CPykSharePointer<T>::operator=;
+
+	template <class L = T>
+	operator L() const
+	{
+		return this->m_pValue ? (L)*this->m_pValue : 0;
+	}
+
 	operator const char *() const
 	{
-		return m_pValue ? (const char *)*m_pValue : "";
+		return this->m_pValue ? (const char *)*this->m_pValue : "";
 	}
 
-	//map ¶ÔÏó»ñÈ¡Êı¾İ£¬ÔÚÃ»ÓĞÆ¥ÅäÊ±·µ»ØÄäÃû¶ÔÏó
+	//map å¯¹è±¡è·å–æ•°æ®ï¼Œåœ¨æ²¡æœ‰åŒ¹é…æ—¶è¿”å›åŒ¿åå¯¹è±¡
 	CPykJsonPointer operator ()(const char *pName)
 	{
-		Init();
-		return { m_ptrRoot, m_pValue->operator()(pName) };
+		this->Init();
+		return { this->m_ptrRoot, this->m_pValue->operator()(pName) };
 	}
 
-	//map ¶ÔÏó»ñÈ¡Êı¾İ£¬ÔÚÃ»ÓĞÆ¥ÅäÊ±·µ»ØĞÂÔöÊı¾İ
+	//map å¯¹è±¡è·å–æ•°æ®ï¼Œåœ¨æ²¡æœ‰åŒ¹é…æ—¶è¿”å›æ–°å¢æ•°æ®
 	CPykJsonPointer operator [](const char *pName)
 	{
-		Init();
-		return { m_ptrRoot, m_pValue->operator[](pName) };
+		this->Init();
+		return { this->m_ptrRoot, this->m_pValue->operator[](pName) };
 	}
 
-	//»ñÈ¡Êı×éÊı¾İ
+	//è·å–æ•°ç»„æ•°æ®
 	CPykJsonPointer operator [](int nNum)
 	{
-		Init();
-		return { m_ptrRoot, m_pValue->operator[](nNum) };
+		this->Init();
+		return { this->m_ptrRoot, this->m_pValue->operator[](nNum) };
 	}
 
-	//»ñÈ¡josnÀàĞÍ
+	//è·å–josnç±»å‹
 	ValueType GetType()
 	{
-		return m_pValue ? m_pValue->GetType() : nullValue;
+		return this->m_pValue ? this->m_pValue->GetType() : nullValue;
 	}
 
-	//»ñÈ¡Êı×éºÍ¶ÔÏóµÄ´óĞ¡
+	//è·å–æ•°ç»„å’Œå¯¹è±¡çš„å¤§å°
 	int Size()
 	{
-		return m_pValue ? m_pValue->Size() : 0;
+		return this->m_pValue ? this->m_pValue->Size() : 0;
 	}
-	//Êı×éÌí¼ÓÊı¾İ
+	//æ•°ç»„æ·»åŠ æ•°æ®
 	CPykJsonPointer Append(const CPykJsonPointer &value)
 	{
-		Init();
-		return { m_ptrRoot, m_pValue->Append(*(value.m_pValue)) };
+		this->Init();
+		return { this->m_ptrRoot, this->m_pValue->Append(*(value.m_pValue)) };
 	}
 
 	CPykJsonPointer Append(T &&value)
 	{
-		Init();
-		return { m_ptrRoot, m_pValue->Append(std::forward<T>(value)) };
+		this->Init();
+		return { this->m_ptrRoot, this->m_pValue->Append(std::forward<T>(value)) };
 	}
 
-	//Êı×éºÍ¶ÔÏóÉ¾³ıÊı¾İ
+	//æ•°ç»„å’Œå¯¹è±¡åˆ é™¤æ•°æ®
 	template<class V>
 	void Remove(V nValue, bool bAll = true)
 	{
-		if (m_pValue)
+		if (this->m_pValue)
 		{
-			m_pValue->Remove(nValue, bAll);
+			this->m_pValue->Remove(nValue, bAll);
 		}
 	}
-	//Êı×éºÍ¶ÔÏóÉ¾³ıÊı¾İ
-	void Remove(const CPykPointer &Value)
+	//æ•°ç»„å’Œå¯¹è±¡åˆ é™¤æ•°æ®
+	void Remove(const CPykJsonPointer &Value)
 	{
-		if (m_pValue && Value.m_pValue)
+		if (this->m_pValue && Value.m_pValue)
 		{
-			m_pValue->Remove(*Value.m_pValue, false);
+			this->m_pValue->Remove(*Value.m_pValue, false);
 		}
 	}
-	//Êı×é¸ù¾İÎ»ÖÃÉ¾³ıÊı¾İ
+	//æ•°ç»„æ ¹æ®ä½ç½®åˆ é™¤æ•°æ®
 	void RemoveArrayItemByNum(unsigned int nNum)
 	{
-		if (m_pValue)
+		if (this->m_pValue)
 		{
-			m_pValue->RemoveArrayItemByNum(nNum);
+			this->m_pValue->RemoveArrayItemByNum(nNum);
 		}
 	}
 
 	CPykJsonPointer Find(T &&value)
 	{
-		Init();
-		return { m_ptrRoot, m_pValue->Find(std::forward<T>(value)) };
+		this->Init();
+		return { this->m_ptrRoot, this->m_pValue->Find(std::forward<T>(value)) };
 	}
 
 	std::string as_string(std::string def = "null")
 	{
-		return m_pValue ? m_pValue->as_string(def) : def;
-	}
-
-	std::string to_utf8_string(std::string def = "")
-	{
-		std::string str = as_string(def);
-		int nSize = MultiByteToWideChar(936, 0, str.c_str(), -1, NULL, 0);
-		WCHAR *pBuffer = new WCHAR[nSize + 1];
-		wmemset(pBuffer, 0, nSize + 1);
-		MultiByteToWideChar(936, 0, str.c_str(), -1, pBuffer, nSize + 1);
-
-		nSize = WideCharToMultiByte(CP_UTF8, 0, pBuffer, -1, NULL, 0, NULL, NULL);
-
-		char *pUtf8 = new char[nSize + 1];
-		memset(pUtf8, 0, nSize + 1);
-		WideCharToMultiByte(CP_UTF8, 0, pBuffer, -1, pUtf8, nSize + 1, NULL, NULL);
-		str = pUtf8;
-		delete[]pUtf8;
-		delete[]pBuffer;
-		return str;
+		return this->m_pValue ? this->m_pValue->as_string(def) : def;
 	}
 };

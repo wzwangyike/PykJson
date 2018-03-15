@@ -1,59 +1,127 @@
 #pragma once
 #include <memory>
+
+#ifndef USE_C11
+#if _MSC_VER >= 1800 || __cplusplus > 201103L
+#define USE_C11
+#endif
+#endif // !USE_C11
+
 template <class T>
-class CPykPointer
+class CPykReturnPointer
 {
 public:
-	CPykPointer()
+	CPykReturnPointer()
 	{
-		m_pValue = nullptr;
-		m_ptrRoot = nullptr;
+		m_pValue = NULL;
 	}
 
-	CPykPointer(T *now)
+	CPykReturnPointer(T *now)
 	{
-		m_ptrRoot = nullptr;
 		m_pValue = now;
 	}
 
-	CPykPointer(std::shared_ptr<T> root, T *now)
+	operator T() const
 	{
-		m_ptrRoot = root;
-		m_pValue = now;
+		return m_pValue ? *m_pValue : 0;
 	}
-	
-	template <class L = T>
-	operator L() const
+#ifdef USE_C11
+	CPykReturnPointer& operator =(T&& value)
 	{
-		return m_pValue ? (L)*m_pValue : 0;
-	}
+		if (m_pValue)
+		{
+			*m_pValue = std::forward<T>(value);
+		}
 
-	//复制构造函数
-	CPykPointer& operator =(const CPykPointer & value)
+		return *this;
+	}
+#endif
+	CPykReturnPointer& operator =(const T &value)
 	{
-		m_ptrRoot = value.m_ptrRoot;
-		m_pValue = value.m_pValue;
+		if (m_pValue)
+		{
+			*m_pValue = value;
+		}
+
 		return *this;
 	}
 
-	//复制构造函数
-	CPykPointer& operator =(T && value)
+	bool operator ==(const T &value)
 	{
-		Init();
-		*m_pValue = std::forward<T>(value);
-		return *this;
+		return m_pValue ? *m_pValue == value : false;
+	}
+
+	bool IsEmpty()
+	{
+		return !m_pValue;
 	}
 
 protected:
-	std::shared_ptr<T> m_ptrRoot = nullptr;
-	T *m_pValue = nullptr;
+	T * m_pValue;
+};
 
+template <class T>
+class CPykSharePointer : public CPykReturnPointer<T>
+{
+public:
+	CPykSharePointer()
+	{
+		m_ptrRoot = nullptr;
+		this->m_pValue = nullptr;
+	}
+
+	CPykSharePointer(std::shared_ptr<T> root, T *now)
+	{
+		m_ptrRoot = root;
+		this->m_pValue = now;
+	}
+#ifdef USE_C11
+	CPykSharePointer& operator =(T && value)
+	{
+		Init(std::forward<T>(value));
+		return *this;
+	}
+#endif
+	CPykSharePointer& operator =(const T & value)
+	{
+		Init(value);
+		return *this;
+	}
+protected:
+	std::shared_ptr<T> m_ptrRoot;
+#ifdef USE_C11
+	void Init(T && value)
+	{
+		if (!this->m_pValue)
+		{
+			this->m_pValue = new T(std::forward<T>(value));
+			m_ptrRoot = std::shared_ptr<T>(this->m_pValue);
+		}
+		else
+		{
+			*(this->m_pValue) = std::forward<T>(value);
+		}
+	}
+#endif
 	void Init()
 	{
-		if (!m_pValue)
+		if (!this->m_pValue)
 		{
-			m_pValue = new T();
-			m_ptrRoot = std::shared_ptr<T>(m_pValue);
+			this->m_pValue = new T();
+			m_ptrRoot = std::shared_ptr<T>(this->m_pValue);
+		}
+	}
+
+	void Init(const T & value)
+	{
+		if (!this->m_pValue)
+		{
+			this->m_pValue = new T(value);
+			m_ptrRoot = std::shared_ptr<T>(this->m_pValue);
+		}
+		else
+		{
+			*(this->m_pValue) = value;
 		}
 	}
 };

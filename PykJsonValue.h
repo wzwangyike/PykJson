@@ -3,8 +3,10 @@
 #include <map>
 #include <vector>
 #include <string>
+#include <cstring>
+#ifdef SupportWideChar
 #include "PykMgr.h"
-
+#endif
 enum ValueType
 {
 	nullValue = 0, ///< 'null' value
@@ -78,12 +80,12 @@ public:
 	{
 
 	}
-
+#ifdef SupportWideChar
 	CPykJsonValue(const wchar_t *pWchar) : CPykJsonValue((const char *)CPykMgr(pWchar))
 	{
 
 	}
-
+#endif
 	~CPykJsonValue()
 	{
 		Reset();
@@ -118,7 +120,7 @@ public:
 		return "";
 	}
 
-	//±È½Ïº¯Êý
+	//æ¯”è¾ƒå‡½æ•°
 	bool operator ==(const CPykJsonValue & value)
 	{
 		if (m_type == value.m_type)
@@ -144,13 +146,13 @@ public:
 		return false;
 	}
 
-	//±È½Ïº¯Êý
+	//æ¯”è¾ƒå‡½æ•°
 	bool operator ==(const CPykJsonValue * pValue)
 	{
 		return this == pValue;
 	}
 
-	//map ¶ÔÏó»ñÈ¡Êý¾Ý£¬ÔÚÃ»ÓÐÆ¥ÅäÊ±·µ»ØÄäÃû¶ÔÏó
+	//map å¯¹è±¡èŽ·å–æ•°æ®ï¼Œåœ¨æ²¡æœ‰åŒ¹é…æ—¶è¿”å›žåŒ¿åå¯¹è±¡
 	CPykJsonValue* operator ()(const char *pName)
 	{
 		if (!pName)
@@ -168,7 +170,7 @@ public:
 		return nullptr;
 	}
 
-	//map ¶ÔÏó»ñÈ¡Êý¾Ý£¬ÔÚÃ»ÓÐÆ¥ÅäÊ±·µ»ØÐÂÔöÊý¾Ý
+	//map å¯¹è±¡èŽ·å–æ•°æ®ï¼Œåœ¨æ²¡æœ‰åŒ¹é…æ—¶è¿”å›žæ–°å¢žæ•°æ®
 	CPykJsonValue* operator [](const char *pName)
 	{
 		if (!pName)
@@ -189,7 +191,7 @@ public:
 		return nullptr;
 	}
 
-	//»ñÈ¡Êý×éÊý¾Ý
+	//èŽ·å–æ•°ç»„æ•°æ®
 	CPykJsonValue* operator [](int nNum)
 	{
 		if (arrayValue == m_type)
@@ -211,7 +213,7 @@ public:
 		return nullptr;
 	}
 
-	//¸´ÖÆ¹¹Ôìº¯Êý
+	//å¤åˆ¶æž„é€ å‡½æ•°
 	CPykJsonValue& operator =(const CPykJsonValue & value)
 	{
 		Reset();
@@ -234,7 +236,7 @@ public:
 		}
 		return *this;
 	}
-	//ÒÆ¶¯¹¹Ôìº¯Êý
+	//ç§»åŠ¨æž„é€ å‡½æ•°
 	CPykJsonValue& operator =(CPykJsonValue && value)
 	{
 		Reset();
@@ -255,12 +257,12 @@ public:
 		value.m_type = nullValue;
 		return *this;
 	}
-	//»ñÈ¡josnÀàÐÍ
+	//èŽ·å–josnç±»åž‹
 	ValueType GetType()
 	{
 		return m_type;
 	}
-	//»ñÈ¡Êý×éºÍ¶ÔÏóµÄ´óÐ¡
+	//èŽ·å–æ•°ç»„å’Œå¯¹è±¡çš„å¤§å°
 	int Size()
 	{
 		switch (m_type)
@@ -286,7 +288,7 @@ public:
 		}
 		return 1;
 	}
-	//Êý×éÌí¼ÓÊý¾Ý
+	//æ•°ç»„æ·»åŠ æ•°æ®
 	CPykJsonValue* Append(const CPykJsonValue &value)
 	{
 		if (nullValue == m_type)
@@ -302,7 +304,7 @@ public:
 		}
 		return nullptr;
 	}
-	//Êý¾ÝÌí¼Ó¿ÉÒÆ¶¯Êý¾Ý
+	//æ•°æ®æ·»åŠ å¯ç§»åŠ¨æ•°æ®
 	CPykJsonValue* Append(CPykJsonValue &&value)
 	{
 		if (nullValue == m_type)
@@ -330,12 +332,12 @@ public:
 			Remove((CPykJsonValue)pStr, bAll);
 		}
 	}
-
+#ifdef SupportWideChar
 	void Remove(const wchar_t* pStr, bool bAll = true)
 	{
 		Remove((const char *)CPykMgr(pStr), bAll);
 	}
-
+#endif
 	void Remove(const CPykJsonValue& value, bool bAll = true)
 	{
 		if (arrayValue == m_type)
@@ -374,7 +376,7 @@ public:
 		}
 	}
 
-	//Êý×é²éÕÒ
+	//æ•°ç»„æŸ¥æ‰¾
 	CPykJsonValue* Find(CPykJsonValue &&value)
 	{
 		if (arrayValue == m_type)
@@ -425,6 +427,10 @@ public:
 		}
 		case mapValue:
 		{
+			if (0 == (*m_value.m_map).size())
+			{
+				return "{}";
+			}
 			std::string str;
 			str += "{";
 			
@@ -446,18 +452,15 @@ public:
 				}
 				str += ",";
 			}
-			if (',' == str[str.length() - 1])
-			{
-				str[str.length() - 1] = '}';
-			}
-			else
-			{
-				str += "}";
-			}
+			str[str.length() - 1] = '}';
 			return str;
 		}
 		case arrayValue:
 		{
+			if (0 == (*m_value.m_ver).size())
+			{
+				return "[]";
+			}
 			std::string str;
 			str += "[";
 			for (auto &i : (*m_value.m_ver))
@@ -474,14 +477,8 @@ public:
 				}
 				str += ",";
 			}
-			if (',' == str[str.length() - 1])
-			{
-				str[str.length() - 1] = ']';
-			}
-			else
-			{
-				str += "]";
-			}
+			str[str.length() - 1] = ']';
+			
 			return str;
 		}
 		default:
@@ -528,15 +525,15 @@ private:
 			
 			m_value.m_string = new char[nLen + 1];
 			memset(m_value.m_string, 0, nLen + 1);
-			strncpy_s(m_value.m_string, nLen + 1, pBegin, nLen);
+			memcpy(m_value.m_string, pBegin, nLen);
 			while(char *pFind = strstr(m_value.m_string, "\\\""))
 			{
-				memmove_s(pFind, nLen + 1 - (pFind - m_value.m_string), pFind + 1, nLen - (pFind - m_value.m_string));
+				memmove(pFind, pFind + 1, nLen - (pFind - m_value.m_string));
 			};
 
 			while (char *pFind = strstr(m_value.m_string, "\\\\"))
 			{
-				memmove_s(pFind, nLen + 1 - (pFind - m_value.m_string), pFind + 1, nLen - (pFind - m_value.m_string));
+				memmove(pFind, pFind + 1, nLen - (pFind - m_value.m_string));
 			};
 		}
 	}
