@@ -7,6 +7,9 @@
 #ifdef SupportWideChar
 #include "PykMgr.h"
 #endif
+
+//map 中key 中 带" 不处理
+#define KeyNotHaveQuotes
 enum ValueType
 {
 	nullValue = 0, ///< 'null' value
@@ -144,12 +147,6 @@ public:
 			}
 		}
 		return false;
-	}
-
-	//比较函数
-	bool operator ==(const CPykJsonValue * pValue)
-	{
-		return this == pValue;
 	}
 
 	//map 对象获取数据，在没有匹配时返回匿名对象
@@ -360,11 +357,11 @@ public:
 		}
 	}
 
-	void RemoveArrayItemByNum(unsigned int nNum)
+	void RemoveItemByIndex(unsigned int nNum)
 	{
 		if (arrayValue == m_type)
 		{
-			int n = 0;
+			unsigned int n = 0;
 			for (auto it = (*m_value.m_ver).begin(); it != (*m_value.m_ver).end(); n++, it++)
 			{
 				if (n == nNum)
@@ -377,7 +374,7 @@ public:
 	}
 
 	//数组查找
-	CPykJsonValue* Find(CPykJsonValue &&value)
+	CPykJsonValue* Find(const CPykJsonValue &value)
 	{
 		if (arrayValue == m_type)
 		{
@@ -393,7 +390,7 @@ public:
 		return nullptr;
 	}
 
-	std::string as_string(std::string def = "")
+	std::string ToString(std::string def = "")
 	{
 		char cTemp[100] = { 0 };
 		
@@ -411,19 +408,7 @@ public:
 			return m_value.m_bool ? "true" : "false";
 		case stringValue:
 		{
-			std::string str = m_value.m_string;
-			size_t size = 0;
-			while ((size = str.find('\\', size)) != std::string::npos)
-			{
-				str.insert(size, 1, '\\');
-				size += 2;
-			}
-			while ((size = str.find('\"', size)) != std::string::npos)
-			{
-				str.insert(size, 1, '\\');
-				size += 2;
-			}
-			return str;
+			return DealJsonString(m_value.m_string);
 		}
 		case mapValue:
 		{
@@ -437,18 +422,22 @@ public:
 			for(auto &i : (*m_value.m_map))
 			{
 				str += "\"";
-				str += i.first;
+				str +=
+#ifndef KeyNotHaveQuotes
+				DealJsonString
+#endif
+				(i.first);
 				str += "\"";
 				str += ":";
 				if(stringValue == i.second.GetType())
 				{
 					str += "\"";
-					str += i.second.as_string();
+					str += i.second.ToString();
 					str += "\"";
 				}
 				else
 				{
-					str += i.second.as_string();
+					str += i.second.ToString();
 				}
 				str += ",";
 			}
@@ -468,12 +457,12 @@ public:
 				if (stringValue == i.GetType())
 				{
 					str += "\"";
-					str += i.as_string();
+					str += i.ToString();
 					str += "\"";
 				}
 				else
 				{
-					str += i.as_string();
+					str += i.ToString();
 				}
 				str += ",";
 			}
@@ -561,38 +550,51 @@ private:
 	template<class T>
 	T ReturnNum(T def = 0) const
 	{
-#pragma warning(push)
-#pragma warning(disable:4244)
 		if (booleanValue == m_type)
 		{
-			return m_value.m_bool ? 1 : 0;
+			return (T)(m_value.m_bool ? 1 : 0);
 		}
 		else if (uintValue == m_type)
 		{
-			return m_value.m_uint;
+			return (T)m_value.m_uint;
 		}
 		else if (intValue == m_type)
 		{
-			return m_value.m_int;
+			return (T)m_value.m_int;
 		}
 		else if (realValue == m_type)
 		{
-			return m_value.m_real;
+			return (T)m_value.m_real;
 		}
 		else if (stringValue == m_type)
 		{
 			if (strchr(m_value.m_string, '.'))
 			{
-				return atof(m_value.m_string);
+				return (T)atof(m_value.m_string);
 			}
 			else
 			{
-				return atoi(m_value.m_string);
+				return (T)atoi(m_value.m_string);
 			}
 		}
-#pragma warning(pop)
-
 		return def;
+	}
+
+	std::string DealJsonString(std::string str)
+	{
+		size_t size = 0;
+		while ((size = str.find('\\', size)) != std::string::npos)
+		{
+			str.insert(size, 1, '\\');
+			size += 2;
+		}
+		size = 0;
+		while ((size = str.find('\"', size)) != std::string::npos)
+		{
+			str.insert(size, 1, '\\');
+			size += 2;
+		}
+		return std::move(str);
 	}
 };
 

@@ -20,6 +20,12 @@ public:
 		return this->m_pValue ? (const char *)*this->m_pValue : "";
 	}
 
+	template <class L>
+	bool operator ==(L value) const
+	{
+		return this->m_pValue ? this->m_pValue->operator ==(value) : false;
+	}
+
 	//map 对象获取数据，在没有匹配时返回匿名对象
 	CPykJsonPointer operator ()(const char *pName)
 	{
@@ -56,7 +62,13 @@ public:
 	CPykJsonPointer Append(const CPykJsonPointer &value)
 	{
 		this->Init();
-		return { this->m_ptrRoot, this->m_pValue->Append(*(value.m_pValue)) };
+		return { this->m_ptrRoot, this->m_pValue->Append(value.m_pValue ? *(value.m_pValue) : T()) };
+	}
+
+	CPykJsonPointer Append(CPykJsonPointer &&value)
+	{
+		this->Init();
+		return { this->m_ptrRoot, this->m_pValue->Append(value.m_pValue ? std::move(*(value.m_pValue)) : T()) };
 	}
 
 	CPykJsonPointer Append(T &&value)
@@ -83,11 +95,11 @@ public:
 		}
 	}
 	//数组根据位置删除数据
-	void RemoveArrayItemByNum(unsigned int nNum)
+	void RemoveItemByIndex(unsigned int nNum)
 	{
 		if (this->m_pValue)
 		{
-			this->m_pValue->RemoveArrayItemByNum(nNum);
+			this->m_pValue->RemoveItemByIndex(nNum);
 		}
 	}
 
@@ -97,8 +109,14 @@ public:
 		return { this->m_ptrRoot, this->m_pValue->Find(std::forward<T>(value)) };
 	}
 
-	std::string as_string(std::string def = "null")
+	CPykJsonPointer Find(const CPykJsonPointer &value)
 	{
-		return this->m_pValue ? this->m_pValue->as_string(def) : def;
+		this->Init();
+		return { this->m_ptrRoot, value.m_pValue ? this->m_pValue->Find(*value.m_pValue) : NULL };
+	}
+
+	std::string ToString(std::string def = "null")
+	{
+		return this->m_pValue ? this->m_pValue->ToString(def) : def;
 	}
 };

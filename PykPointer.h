@@ -70,6 +70,12 @@ public:
 		this->m_pValue = nullptr;
 	}
 
+	CPykSharePointer(const CPykSharePointer & value)
+	{
+		m_ptrRoot = value.m_ptrRoot;
+		this->m_pValue = value.m_pValue;
+	}
+
 	CPykSharePointer(std::shared_ptr<T> root, T *now)
 	{
 		m_ptrRoot = root;
@@ -81,7 +87,19 @@ public:
 		Init(std::forward<T>(value));
 		return *this;
 	}
+
+	CPykSharePointer& operator =(CPykSharePointer && value)
+	{
+		Init(std::forward<CPykSharePointer>(value));
+		return *this;
+	}
 #endif
+	CPykSharePointer& operator =(const CPykSharePointer & value)
+	{
+		Init(value);
+		return *this;
+	}
+
 	CPykSharePointer& operator =(const T & value)
 	{
 		Init(value);
@@ -102,6 +120,26 @@ protected:
 			*(this->m_pValue) = std::forward<T>(value);
 		}
 	}
+	void Init(CPykSharePointer && value)
+	{
+		if (!this->m_pValue)
+		{
+			m_ptrRoot = value.m_ptrRoot;
+			this->m_pValue = value.m_pValue;
+		}
+		else
+		{
+			if (value.m_pValue)
+			{
+				Init(std::move(*value.m_pValue));
+			}
+			else
+			{
+				Init();
+			}
+		}
+	}
+	
 #endif
 	void Init()
 	{
@@ -122,6 +160,26 @@ protected:
 		else
 		{
 			*(this->m_pValue) = value;
+		}
+	}
+
+	void Init(const CPykSharePointer & value)
+	{
+		if (!this->m_pValue)
+		{
+			m_ptrRoot = value.m_ptrRoot;
+			this->m_pValue = value.m_pValue;
+		}
+		else
+		{
+			if (value.m_pValue)
+			{
+				Init(*value.m_pValue);
+			}
+			else
+			{
+				Init();
+			}
 		}
 	}
 };
