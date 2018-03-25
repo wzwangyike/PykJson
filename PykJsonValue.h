@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <cstring>
+#include <assert.h>
 #ifdef SupportWideChar
 #include "PykMgr.h"
 #endif
@@ -179,10 +180,7 @@ public:
 	//map 对象获取数据，在没有匹配时返回匿名对象
 	CPykJsonValue* operator ()(const char *pName)
 	{
-		if (!pName)
-		{
-			return nullptr;
-		}
+		assert(pName);
 		if (ValueType::mapValue == m_type)
 		{
 			auto it = (*m_value.m_map).find(pName);
@@ -197,10 +195,7 @@ public:
 	//map 对象获取数据，在没有匹配时返回新增数据
 	CPykJsonValue* operator [](const char *pName)
 	{
-		if (!pName)
-		{
-			return nullptr;
-		}
+		assert(pName);
 		if (ValueType::nullValue == m_type)
 		{
 			m_type = ValueType::mapValue;

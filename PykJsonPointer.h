@@ -50,7 +50,7 @@ public:
 	//获取josn类型
 	ValueType GetType()
 	{
-		return this->m_pValue ? this->m_pValue->GetType() : nullValue;
+		return this->m_pValue ? this->m_pValue->GetType() : ValueType::nullValue;
 	}
 
 	//获取数组和对象的大小
