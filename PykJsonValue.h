@@ -8,8 +8,6 @@
 #include "PykMgr.h"
 #endif
 
-//map 中key 中 带" 不处理
-#define KeyNotHaveQuotes
 enum ValueType
 {
 	nullValue = 0, ///< 'null' value
@@ -422,11 +420,7 @@ public:
 			for(auto &i : (*m_value.m_map))
 			{
 				str += "\"";
-				str +=
-#ifndef KeyNotHaveQuotes
-				DealJsonString
-#endif
-				(i.first);
+				str += i.first;
 				str += "\"";
 				str += ":";
 				if(stringValue == i.second.GetType())
@@ -497,7 +491,9 @@ private:
 	{
 		if (!pBegin)
 		{
-			m_type = nullValue;
+			m_type = stringValue;
+			m_value.m_string = new char[1];
+			memset(m_value.m_string, 0, 1);
 		}
 		else
 		{
@@ -515,15 +511,8 @@ private:
 			m_value.m_string = new char[nLen + 1];
 			memset(m_value.m_string, 0, nLen + 1);
 			memcpy(m_value.m_string, pBegin, nLen);
-			while(char *pFind = strstr(m_value.m_string, "\\\""))
-			{
-				memmove(pFind, pFind + 1, nLen - (pFind - m_value.m_string));
-			};
 
-			while (char *pFind = strstr(m_value.m_string, "\\\\"))
-			{
-				memmove(pFind, pFind + 1, nLen - (pFind - m_value.m_string));
-			};
+			ParseJsonString(m_value.m_string, nLen);
 		}
 	}
 
@@ -580,19 +569,98 @@ private:
 		return def;
 	}
 
+	void AddBackslashAndChange(std::string &str, size_t &nFind, size_t &nCount, bool bChange, char cChange)
+	{
+		if (bChange)
+		{
+			str[nFind] = cChange;
+		}
+		
+		str.insert(nFind, 1, '\\');
+		nCount++;
+		nFind++;
+	}
+	
+	void ParseJsonString(char * lpString, size_t lenght)
+	{
+		for (char * lp = lpString; lp = strchr(lp, '\\'); lp++)
+		{
+			switch (*(lp + 1))
+			{
+			case '\\':
+			case '\"':
+			{
+				memmove(lp, lp + 1, lenght - (lp - lpString));
+				break;
+			}
+			case 'b':
+			{
+				memmove(lp, lp + 1, lenght - (lp - lpString));
+				*lp = '\b';
+				break;
+			}
+			case 't':
+			{
+				memmove(lp, lp + 1, lenght - (lp - lpString));
+				*lp = '\t';
+				break;
+			}
+			case 'n':
+			{
+				memmove(lp, lp + 1, lenght - (lp - lpString));
+				*lp = '\n';
+				break;
+			}
+			case 'r':
+			{
+				memmove(lp, lp + 1, lenght - (lp - lpString));
+				*lp = '\r';
+				break;
+			}
+			default:
+				break;
+			}
+			
+		}
+	}
+
 	std::string DealJsonString(std::string str)
 	{
-		size_t size = 0;
-		while ((size = str.find('\\', size)) != std::string::npos)
+		size_t size = str.length();
+		
+		for (size_t i = 0; i < size; i++)
 		{
-			str.insert(size, 1, '\\');
-			size += 2;
-		}
-		size = 0;
-		while ((size = str.find('\"', size)) != std::string::npos)
-		{
-			str.insert(size, 1, '\\');
-			size += 2;
+			switch (str[i])
+			{
+			case '\\':
+			case '\"':
+			{
+				AddBackslashAndChange(str, i, size, false, '\0');
+				break;
+			}
+			case '\b':
+			{
+				AddBackslashAndChange(str, i, size, true, 'b');
+				break;
+			}
+			case '\n':
+			{
+				AddBackslashAndChange(str, i, size, true, 'n');
+				break;
+			}
+			case '\r':
+			{
+				AddBackslashAndChange(str, i, size, true, 'r');
+				break;
+			}
+			case '\t':
+			{
+				AddBackslashAndChange(str, i, size, true, 't');
+				break;
+			}
+			default:
+				break;
+			}
 		}
 		return std::move(str);
 	}
