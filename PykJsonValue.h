@@ -5,6 +5,7 @@
 #include <string>
 #include <cstring>
 #include <assert.h>
+#include <functional>
 #ifdef SupportWideChar
 #include "PykMgr.h"
 #endif
@@ -413,86 +414,90 @@ public:
 		return nullptr;
 	}
 
-	std::string ToString(std::string def = "")
+	std::string ToString()
 	{
-		char cTemp[100] = { 0 };
-		
-		switch (m_type)
-		{
-		case ValueType::nullValue:
-			return "null";
-		case ValueType::intValue:
-			return std::to_string(m_value.m_int);
-		case ValueType::uintValue:
-			return std::to_string(m_value.m_uint);
-		case ValueType::realValue:
-			return std::to_string(m_value.m_real);
-		case ValueType::booleanValue:
-			return m_value.m_bool ? "true" : "false";
-		case ValueType::stringValue:
-		{
-			return DealJsonString(m_value.m_string);
-		}
-		case ValueType::mapValue:
-		{
-			if (0 == (*m_value.m_map).size())
-			{
-				return "{}";
-			}
+		return ToStringByFunc(
+			[](ObjectMap *pMap) {
 			std::string str;
 			str += "{";
-			
-			for(auto &i : (*m_value.m_map))
+
+			for (auto &i : *pMap)
 			{
 				str += "\"";
 				str += i.first;
-				str += "\"";
-				str += ":";
-				if(ValueType::stringValue == i.second.GetType())
-				{
-					str += "\"";
-					str += i.second.ToString();
-					str += "\"";
-				}
-				else
-				{
-					str += i.second.ToString();
-				}
+				str += "\":";
+				str += i.second.ToString();
 				str += ",";
 			}
-			str[str.length() - 1] = '}';
+			str.pop_back();
+			str += "}";
 			return str;
-		}
-		case ValueType::arrayValue:
-		{
-			if (0 == (*m_value.m_ver).size())
-			{
-				return "[]";
-			}
+		},[](ObjectVec *pVec) {
 			std::string str;
 			str += "[";
-			for (auto &i : (*m_value.m_ver))
+			for (auto &i : *pVec)
 			{
-				if (ValueType::stringValue == i.GetType())
-				{
-					str += "\"";
-					str += i.ToString();
-					str += "\"";
-				}
-				else
-				{
-					str += i.ToString();
-				}
+				str += i.ToString();
 				str += ",";
 			}
-			str[str.length() - 1] = ']';
-			
+			str.pop_back();
+			str += "]";
 			return str;
-		}
-		default:
-			return def;
-		}
-		return cTemp;
+		});
+	}
+
+	std::string ToFormateString(unsigned int nDeep = 0)
+	{
+		return ToStringByFunc(
+			[nDeep](ObjectMap *pMap) {
+			std::string str;
+			str += "{";
+
+			for (auto &i : *pMap)
+			{
+				str += "\r\n";
+				for (size_t i = 0; i <= nDeep; i++)
+				{
+					str += "\t";
+				}
+
+				str += "\"";
+				str += i.first;
+				str += "\":";
+				str += i.second.ToFormateString(nDeep + 1);
+				str += ",";
+			}
+
+			str.pop_back();
+			str += "\r\n";
+			for (size_t i = 0; i < nDeep; i++)
+			{
+				str += "\t";
+			}
+			str += "}";
+			return str;
+		},[nDeep](ObjectVec *pVec) {
+			std::string str;
+			str += "[";
+			for (auto &i : *pVec)
+			{
+				str += "\r\n";
+				for (size_t i = 0; i <= nDeep; i++)
+				{
+					str += "\t";
+				}
+				str += i.ToFormateString(nDeep + 1);
+				str += ",";
+			}
+			str.pop_back();
+			str += "\r\n";
+			for (size_t i = 0; i < nDeep; i++)
+			{
+				str += "\t";
+			}
+			str += "]";
+			return str;
+		});
 	}
 
 private:
@@ -688,6 +693,46 @@ private:
 			}
 		}
 		return std::move(str);
+	}
+
+	std::string ToStringByFunc(std::function<std::string(ObjectMap *pMap)> Fmap, std::function<std::string(ObjectVec *pVec)> Farr)
+	{
+		switch (m_type)
+		{
+		case ValueType::nullValue:
+			return "null";
+		case ValueType::intValue:
+			return std::to_string(m_value.m_int);
+		case ValueType::uintValue:
+			return std::to_string(m_value.m_uint);
+		case ValueType::realValue:
+			return std::to_string(m_value.m_real);
+		case ValueType::booleanValue:
+			return m_value.m_bool ? "true" : "false";
+		case ValueType::stringValue:
+		{
+			return "\"" + DealJsonString(m_value.m_string) + "\"";
+		}
+		case ValueType::mapValue:
+		{
+			if (0 == (*m_value.m_map).size())
+			{
+				return "{}";
+			}
+			return Fmap(m_value.m_map);
+		}
+		case ValueType::arrayValue:
+		{
+			if (0 == (*m_value.m_ver).size())
+			{
+				return "[]";
+			}
+			return Farr(m_value.m_ver);
+		}
+		default:
+			assert(false);
+		}
+		return "";
 	}
 };
 

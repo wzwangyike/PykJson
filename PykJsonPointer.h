@@ -117,6 +117,11 @@ public:
 
 	std::string ToString(std::string def = "null")
 	{
-		return this->m_pValue ? this->m_pValue->ToString(def) : def;
+		return this->m_pValue ? this->m_pValue->ToString() : def;
+	}
+
+	std::string ToFormateString(std::string def = "null")
+	{
+		return this->m_pValue ? this->m_pValue->ToFormateString() : def;
 	}
 };
