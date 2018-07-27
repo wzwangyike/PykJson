@@ -306,7 +306,7 @@ public:
 		default:
 			break;
 		}
-		return 1;
+		return 0;
 	}
 	//数组添加数据
 	CPykJsonValue* Append(const CPykJsonValue &value)
