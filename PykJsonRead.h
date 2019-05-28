@@ -2,15 +2,71 @@
 
 #include "PykJsonValue.h"
 #include <cassert>
+#include "PykMgr.h"
+enum class json_encoding
+{
+	encoding_auto,
+	encoding_utf8,
+	encoding_wchar,
+	encoding_ansi
+};
+
 class CPykJsonRead
 {
 public:
-	bool parse(const char *pBegin, CPykJsonValueEx &value)
+	bool parse(const char* pBegin, CPykJsonValueEx& value, json_encoding encode = json_encoding::encoding_auto)
 	{
-		return parse(pBegin, pBegin + strlen(pBegin), value);
+		if (json_encoding::encoding_auto == encode)
+		{
+			int nOffset = 0;
+			encode = GetEncode(pBegin, nOffset);
+			pBegin += nOffset;
+		}
+		switch (encode)
+		{
+		case json_encoding::encoding_wchar:
+		{
+			CPykMgr mgr((const wchar_t*)pBegin);
+			LPCSTR lp = mgr;
+			return InterParse(lp, lp + strlen(lp), value);
+			break;
+		}
+		case json_encoding::encoding_ansi:
+		case json_encoding::encoding_utf8:
+			return InterParse(pBegin, pBegin + strlen(pBegin), value);
+		default:
+			break;
+		}
+		return false;
 	}
 
-	bool parse(const char *pBegin, const char *pEnd, CPykJsonValue &value)
+	bool parse(const char* pBegin, const char* pEnd, CPykJsonValueEx& value, json_encoding encode = json_encoding::encoding_auto)
+	{
+		if (json_encoding::encoding_auto == encode)
+		{
+			int nOffset = 0;
+			encode = GetEncode(pBegin, pEnd, nOffset);
+			pBegin += nOffset;
+		}
+		switch (encode)
+		{
+		case json_encoding::encoding_wchar:
+		{
+			CPykMgr mgr((const wchar_t*)pBegin, (const wchar_t*)pEnd);
+			LPCSTR lp = mgr;
+			return InterParse(lp, lp + strlen(lp), value);
+			break;
+		}
+		case json_encoding::encoding_ansi:
+		case json_encoding::encoding_utf8:
+			return InterParse(pBegin, pEnd, value);
+		default:
+			break;
+		}
+		return false;
+	}
+
+	bool parse(const char* pBegin, const char* pEnd, CPykJsonValue& value)
 	{
 		m_pBegin = pBegin;
 		m_pEnd = pEnd;
@@ -18,16 +74,63 @@ public:
 		return true;
 	}
 
-	bool parse(const char *pBegin, const char *pEnd, CPykJsonValueEx &value)
+private:
+
+	bool InterParse(const char* pBegin, const char* pEnd, CPykJsonValueEx& value)
 	{
-		m_pBegin = pBegin;
-		m_pEnd = pEnd;
-		CPykJsonValue *p = new CPykJsonValue(ReadValue());
+		CPykJsonValue* p = new CPykJsonValue;
+		bool bRet = parse(pBegin, pEnd, *p);
 		CPykJsonValueEx valueTemp(std::shared_ptr<CPykJsonValue>(p), p);
 		value = valueTemp;
-		return true;
+		return bRet;
 	}
-private:
+
+	json_encoding GetEncode(const char* pBegin, const char *pEnd, int& nOffset)
+	{
+		json_encoding encode = GetEncode(pBegin, nOffset);
+		if (json_encoding::encoding_ansi == encode)
+		{
+			const char* pFind = pBegin;
+			while (pFind != pEnd)
+			{
+				if ('\0' == *pFind)
+				{
+					encode = json_encoding::encoding_wchar;
+					break;
+				}
+				if (*pFind >= '0xE4' && *pFind <= 'E9')
+				{
+					encode = json_encoding::encoding_utf8;
+					break;
+				}
+				pFind++;
+			}
+		}
+		return encode;
+	}
+
+	json_encoding GetEncode(const char* pBegin, int &nOffset)
+	{
+		char pUtf[4] = { 0xEF, 0xBB, 0xBF, 0x0 };
+		char pUni[3] = { 0xFF, 0xFE, 0x0 };
+
+		if (0 == strncmp(pBegin, pUtf, 3))
+		{
+			nOffset = 3;
+			return json_encoding::encoding_utf8;
+		}
+		else if (0 == strncmp(pBegin, pUni, 2))
+		{
+			nOffset = 2;
+			return json_encoding::encoding_wchar;
+		}
+		else
+		{
+			nOffset = 0;
+			return json_encoding::encoding_ansi;
+		}
+	}
+
 	CPykJsonValue ReadMap()
 	{
 		assert(*m_pBegin == '{');
@@ -52,8 +155,8 @@ private:
 			case '\"':
 			{
 				m_pBegin++;
-				const char *pStr = m_pBegin;
-				const char *pFind = FindNextQuotes();
+				const char* pStr = m_pBegin;
+				const char* pFind = FindNextQuotes();
 				if (!pFind)
 				{
 					return value;
@@ -113,7 +216,7 @@ private:
 			case '\"':
 			{
 				m_pBegin++;
-				const char *pStr = m_pBegin;
+				const char* pStr = m_pBegin;
 				return CPykJsonValue(pStr, FindNextQuotes());
 			}
 			case '{':
@@ -168,7 +271,7 @@ private:
 
 	CPykJsonValue ReadNum()
 	{
-		const char *p = m_pBegin;
+		const char* p = m_pBegin;
 		bool bDouble = false;
 		for (; m_pBegin < m_pEnd; m_pBegin++)
 		{
@@ -195,7 +298,7 @@ private:
 		return CPykJsonValue();
 	}
 
-	const char *FindNextQuotes()
+	const char* FindNextQuotes()
 	{
 		for (; m_pBegin < m_pEnd; m_pBegin++)
 		{
@@ -266,6 +369,6 @@ private:
 		return false;
 	}
 
-	const char *m_pBegin;
-	const char *m_pEnd;
+	const char* m_pBegin;
+	const char* m_pEnd;
 };
