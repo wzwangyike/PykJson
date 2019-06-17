@@ -113,7 +113,7 @@ public:
 
 	}
 #ifdef SupportWideChar
-	CPykJsonValue(const wchar_t *pWchar) : CPykJsonValue((const char *)CPykMgr(pWchar))
+	CPykJsonValue(const wchar_t *pWchar) : CPykJsonValue((const char *)CPykMgrTemplate<CP_UTF8>(pWchar))
 	{
 
 	}

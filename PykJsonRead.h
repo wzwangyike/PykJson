@@ -111,15 +111,15 @@ private:
 
 	json_encoding GetEncode(const char* pBegin, int &nOffset)
 	{
-		char pUtf[4] = { 0xEF, 0xBB, 0xBF, 0x0 };
-		char pUni[3] = { 0xFF, 0xFE, 0x0 };
+		BYTE pUtf[4] = { 0xEF, 0xBB, 0xBF, 0x0 };
+		BYTE pUni[3] = { 0xFF, 0xFE, 0x0 };
 
-		if (0 == strncmp(pBegin, pUtf, 3))
+		if (0 == memcmp(pBegin, pUtf, 3))
 		{
 			nOffset = 3;
 			return json_encoding::encoding_utf8;
 		}
-		else if (0 == strncmp(pBegin, pUni, 2))
+		else if (0 == memcmp(pBegin, pUni, 2))
 		{
 			nOffset = 2;
 			return json_encoding::encoding_wchar;
@@ -300,12 +300,29 @@ private:
 
 	const char* FindNextQuotes()
 	{
+		int nCount = 0;
 		for (; m_pBegin < m_pEnd; m_pBegin++)
 		{
-			if ('\"' == *m_pBegin &&
-				'\\' != *(m_pBegin - 1))
+			switch (*m_pBegin)
 			{
-				return m_pBegin++;
+			case '\"':
+			{
+				if (0 == nCount % 2)
+				{
+					return m_pBegin++;
+				}
+				break;
+			}
+			case '\\':
+			{
+				nCount++;
+				break;
+			}
+			default:
+			{
+				nCount = 0;
+				break;
+			}
 			}
 		}
 		assert(false);
