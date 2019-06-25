@@ -1,7 +1,7 @@
 #pragma once
 
 #include "PykPointer.h"
-
+#include <type_traits>
 template <class T>
 class CPykJsonPointer : public CPykSharePointer<T>
 {
@@ -9,7 +9,7 @@ public:
 	using CPykSharePointer<T>::CPykSharePointer;
 	using CPykSharePointer<T>::operator=;
 
-	template <class L = T>
+	template <class L = T, typename std::enable_if<!std::is_same_v<L, char*>, int>::type n = 0>
 	operator L() const
 	{
 		return this->m_pValue ? (L)*this->m_pValue : 0;
@@ -17,7 +17,7 @@ public:
 
 	operator const char *() const
 	{
-		return this->m_pValue ? (const char *)*this->m_pValue : "";
+		return this->m_pValue ? (const char*)*this->m_pValue : "";
 	}
 
 	template <class L>

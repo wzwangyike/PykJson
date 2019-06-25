@@ -126,22 +126,8 @@ protected:
 	}
 	void Init(CPykSharePointer && value)
 	{
-		if (!this->m_pValue)
-		{
-			m_ptrRoot = value.m_ptrRoot;
-			this->m_pValue = value.m_pValue;
-		}
-		else
-		{
-			if (value.m_pValue)
-			{
-				Init(std::move(*value.m_pValue));
-			}
-			else
-			{
-				Init();
-			}
-		}
+		m_ptrRoot = value.m_ptrRoot;
+		this->m_pValue = value.m_pValue;
 	}
 	
 #endif
@@ -169,21 +155,7 @@ protected:
 
 	void Init(const CPykSharePointer & value)
 	{
-		if (!this->m_pValue)
-		{
-			m_ptrRoot = value.m_ptrRoot;
-			this->m_pValue = value.m_pValue;
-		}
-		else
-		{
-			if (value.m_pValue)
-			{
-				Init(*value.m_pValue);
-			}
-			else
-			{
-				Init();
-			}
-		}
+		m_ptrRoot = value.m_ptrRoot;
+		this->m_pValue = value.m_pValue;
 	}
 };

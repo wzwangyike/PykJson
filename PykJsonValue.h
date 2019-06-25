@@ -95,7 +95,7 @@ public:
 		*this = value;
 	}
 
-	CPykJsonValue(CPykJsonValue &&value) : CPykJsonValue()
+	CPykJsonValue(CPykJsonValue &&value) : CPykJsonValue() 
 	{
 		m_type = value.m_type;
 		memcpy(&m_value, &value.m_value, sizeof(ValueHolder));
@@ -140,7 +140,7 @@ public:
 
 	operator bool() const
 	{
-		return ReturnNum<bool>();
+		return ReturnBool();
 	}
 
 	operator const char *() const
@@ -355,7 +355,7 @@ public:
 #ifdef SupportWideChar
 	void Remove(const wchar_t* pStr, bool bAll = true)
 	{
-		Remove((const char *)CPykMgr(pStr), bAll);
+		Remove((const char *)CPykMgrTemplate<CP_UTF8>(pStr), bAll);
 	}
 #endif
 	void Remove(const CPykJsonValue& value, bool bAll = true)
@@ -597,6 +597,19 @@ private:
 			}
 		}
 		return def;
+	}
+
+	bool ReturnBool(bool def = 0) const
+	{
+		if (ValueType::nullValue == m_type)
+		{
+			return false;
+		}
+		if (ValueType::booleanValue == m_type)
+		{
+			return m_value.m_bool;
+		}
+		return true;
 	}
 
 	void AddBackslashAndChange(std::string &str, size_t &nFind, size_t &nCount, bool bChange, char cChange)
