@@ -16,7 +16,7 @@ public:
 		m_pValue = NULL;
 	}
 
-	CPykReturnPointer(T *now)
+	CPykReturnPointer(T* now)
 	{
 		m_pValue = now;
 	}
@@ -36,7 +36,7 @@ public:
 		return *this;
 	}
 #endif
-	CPykReturnPointer& operator =(const T &value)
+	CPykReturnPointer& operator =(const T& value)
 	{
 		if (m_pValue)
 		{
@@ -46,7 +46,7 @@ public:
 		return *this;
 	}
 
-	bool operator ==(const T &value)
+	bool operator ==(const T& value)
 	{
 		return m_pValue ? *m_pValue == value : false;
 	}
@@ -57,7 +57,7 @@ public:
 	}
 
 protected:
-	T * m_pValue;
+	T* m_pValue;
 };
 
 template <class T>
@@ -70,49 +70,56 @@ public:
 		this->m_pValue = nullptr;
 	}
 
-	CPykSharePointer(const CPykSharePointer & value)
+	CPykSharePointer(const CPykSharePointer& value)
 	{
 		m_ptrRoot = value.m_ptrRoot;
 		this->m_pValue = value.m_pValue;
 	}
 
-	CPykSharePointer(std::shared_ptr<T> root, T *now)
+	CPykSharePointer(std::shared_ptr<T> root, T* now)
 	{
 		m_ptrRoot = root;
 		this->m_pValue = now;
 	}
-	CPykSharePointer(T && value)
+	CPykSharePointer(T&& value)
 	{
 		this->operator=(std::forward<T>(value));
 	}
 #ifdef USE_C11
-	CPykSharePointer& operator =(T && value)
+	CPykSharePointer& operator =(T&& value)
 	{
 		Init(std::forward<T>(value));
 		return *this;
 	}
 
-	CPykSharePointer& operator =(CPykSharePointer && value)
+	CPykSharePointer& operator =(CPykSharePointer&& value)
 	{
 		Init(std::forward<CPykSharePointer>(value));
 		return *this;
 	}
 #endif
-	CPykSharePointer& operator =(const CPykSharePointer & value)
+	CPykSharePointer& operator =(const CPykSharePointer& value)
 	{
 		Init(value);
 		return *this;
 	}
 
-	CPykSharePointer& operator =(const T & value)
+	CPykSharePointer& operator =(const T& value)
 	{
 		Init(value);
 		return *this;
 	}
+
+	void Reset(const CPykSharePointer& value)
+	{
+		m_ptrRoot = value.m_ptrRoot;
+		this->m_pValue = value.m_pValue;
+	}
+
 protected:
 	std::shared_ptr<T> m_ptrRoot;
 #ifdef USE_C11
-	void Init(T && value)
+	void Init(T&& value)
 	{
 		if (!this->m_pValue)
 		{
@@ -124,12 +131,26 @@ protected:
 			*(this->m_pValue) = std::forward<T>(value);
 		}
 	}
-	void Init(CPykSharePointer && value)
+	void Init(CPykSharePointer&& value)
 	{
-		m_ptrRoot = value.m_ptrRoot;
-		this->m_pValue = value.m_pValue;
+		if (!this->m_pValue)
+		{
+			m_ptrRoot = value.m_ptrRoot;
+			this->m_pValue = value.m_pValue;
+		}
+		else
+		{
+			if (value.m_pValue)
+			{
+				Init(std::move(*value.m_pValue));
+			}
+			else
+			{
+				Init();
+			}
+		}
 	}
-	
+
 #endif
 	void Init()
 	{
@@ -140,7 +161,7 @@ protected:
 		}
 	}
 
-	void Init(const T & value)
+	void Init(const T& value)
 	{
 		if (!this->m_pValue)
 		{
@@ -153,9 +174,23 @@ protected:
 		}
 	}
 
-	void Init(const CPykSharePointer & value)
+	void Init(const CPykSharePointer& value)
 	{
-		m_ptrRoot = value.m_ptrRoot;
-		this->m_pValue = value.m_pValue;
+		if (!this->m_pValue)
+		{
+			m_ptrRoot = value.m_ptrRoot;
+			this->m_pValue = value.m_pValue;
+		}
+		else
+		{
+			if (value.m_pValue)
+			{
+				Init(*value.m_pValue);
+			}
+			else
+			{
+				Init();
+			}
+		}
 	}
 };

@@ -232,7 +232,6 @@ public:
 
 		return nullptr;
 	}
-
 	//复制构造函数
 	CPykJsonValue& operator =(const CPykJsonValue & value)
 	{
@@ -266,7 +265,7 @@ public:
 		{
 			value.m_value.m_map = NULL;
 		}
-		else if(ValueType::arrayValue == value.m_type)
+		else if (ValueType::arrayValue == value.m_type)
 		{
 			value.m_value.m_ver = NULL;
 		}
@@ -325,7 +324,7 @@ public:
 		return nullptr;
 	}
 	//数据添加可移动数据
-	CPykJsonValue* Append(CPykJsonValue &&value)
+	CPykJsonValue* Append(CPykJsonValue&&value)
 	{
 		if (ValueType::nullValue == m_type)
 		{
