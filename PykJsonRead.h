@@ -184,6 +184,11 @@ private:
 		value.m_value.m_ver = new CPykJsonValue::ObjectVec;
 		for (; m_pBegin < m_pEnd;)
 		{
+			if (IsNoMeanChar(*m_pBegin))
+			{
+				m_pBegin++;
+				continue;
+			}
 			switch (*m_pBegin)
 			{
 			case ']':
