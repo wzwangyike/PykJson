@@ -295,7 +295,25 @@ private:
 				}
 				else
 				{
-					return CPykJsonValue(atoi(p));
+					unsigned long long ull = strtoull(p, NULL, 0);
+					unsigned long lHi = ull >> 32;
+					if (lHi == 0xFFFFFFFF)
+					{
+						if ('-' == *p)
+						{
+							return CPykJsonValue((int)ull);
+						}
+						else
+						{
+							return CPykJsonValue((unsigned int)ull);
+						}
+					}
+					else if(0 == lHi)
+					{
+						return CPykJsonValue((unsigned int)ull);
+					}
+					assert(false);
+					return CPykJsonValue();
 				}
 			}
 		}
