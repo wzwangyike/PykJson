@@ -592,7 +592,7 @@ private:
 			}
 			else
 			{
-				return (T)atoi(m_value.m_string);
+				return (T)strtoull(m_value.m_string, NULL, 0);
 			}
 		}
 		return def;
