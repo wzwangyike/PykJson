@@ -222,7 +222,7 @@ private:
 			{
 				m_pBegin++;
 				const char* pStr = m_pBegin;
-				return CPykJsonValue(pStr, FindNextQuotes());
+				return CPykJsonValue(pStr, FindNextQuotes(), true);
 			}
 			case '{':
 			{

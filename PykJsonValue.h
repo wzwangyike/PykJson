@@ -103,9 +103,9 @@ public:
 		memset(&value.m_value, 0, sizeof(ValueHolder));
 	}
 
-	CPykJsonValue(const char *pBegin, const char *pEnd = NULL)
+	CPykJsonValue(const char *pBegin, const char *pEnd = NULL, bool bParse = false)
 	{
-		InitByString(pBegin, pEnd);
+		InitByString(pBegin, pEnd, bParse);
 	}
 
 	CPykJsonValue(const std::string &str) : CPykJsonValue(str.c_str(), str.c_str() + str.length())
@@ -516,7 +516,7 @@ private:
 		ObjectVec *m_ver;
 	} m_value = { 0 };
 
-	void InitByString(const char* pBegin, const char *pEnd = NULL)
+	void InitByString(const char* pBegin, const char *pEnd = NULL, bool bParse = false)
 	{
 		if (!pBegin)
 		{
@@ -540,8 +540,10 @@ private:
 			m_value.m_string = new char[nLen + 1];
 			memset(m_value.m_string, 0, nLen + 1);
 			memcpy(m_value.m_string, pBegin, nLen);
-
-			ParseJsonString(m_value.m_string, nLen);
+			if (bParse)
+			{
+				ParseJsonString(m_value.m_string, nLen);
+			}
 		}
 	}
 
