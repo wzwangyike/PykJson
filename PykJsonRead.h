@@ -334,6 +334,7 @@ private:
 				{
 					return m_pBegin++;
 				}
+				nCount = 0;
 				break;
 			}
 			case '\\':
