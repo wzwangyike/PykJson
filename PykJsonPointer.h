@@ -5,20 +5,25 @@
 template <class T>
 class CPykJsonPointer : public CPykSharePointer<T>
 {
+#define FUCCALLORG(funcName, type, param) \
+	CPykJsonPointer funcName(type param){\
+	this->Init();\
+	return { this->m_ptrRoot, this->m_pValue->funcName(param) }; \
+	}
+
+#define TRANSFORM(type, def) \
+	operator type() const{\
+	return this->m_pValue ? (type)* this->m_pValue : def;\
+	}
 public:
 	using CPykSharePointer<T>::CPykSharePointer;
 	using CPykSharePointer<T>::operator=;
 
-	template <class L = T, typename std::enable_if<!std::is_same_v<L, char*>, int>::type n = 0>
-	operator L() const
-	{
-		return this->m_pValue ? (L)*this->m_pValue : 0;
-	}
-
-	operator const char *() const
-	{
-		return this->m_pValue ? (const char*)*this->m_pValue : "";
-	}
+	TRANSFORM(int, 0)
+	TRANSFORM(unsigned int, 0)
+	TRANSFORM(double, 0)
+	TRANSFORM(bool, 0)
+	TRANSFORM(const char*, "")
 
 	template <class L>
 	bool operator ==(L value) const
@@ -27,25 +32,13 @@ public:
 	}
 
 	//map 对象获取数据，在没有匹配时返回匿名对象
-	CPykJsonPointer operator ()(const char *pName)
-	{
-		this->Init();
-		return { this->m_ptrRoot, this->m_pValue->operator()(pName) };
-	}
+	FUCCALLORG(operator (), const char*, pName)
 
 	//map 对象获取数据，在没有匹配时返回新增数据
-	CPykJsonPointer operator [](const char *pName)
-	{
-		this->Init();
-		return { this->m_ptrRoot, this->m_pValue->operator[](pName) };
-	}
+	FUCCALLORG(operator [], const char*, pName)
 
 	//获取数组数据
-	CPykJsonPointer operator [](int nNum)
-	{
-		this->Init();
-		return { this->m_ptrRoot, this->m_pValue->operator[](nNum) };
-	}
+	FUCCALLORG(operator [], int, nNum)
 
 	//获取josn类型
 	ValueType GetType()
