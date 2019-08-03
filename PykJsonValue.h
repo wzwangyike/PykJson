@@ -178,7 +178,7 @@ public:
 		return false;
 	}
 
-	//map 对象获取数据，在没有匹配时返回匿名对象
+	//map 对象获取数据
 	CPykJsonValue* operator ()(const char *pName)
 	{
 		assert(pName);
