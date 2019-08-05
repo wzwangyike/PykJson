@@ -133,6 +133,16 @@ public:
 		return ReturnNum<unsigned int>();
 	}
 
+	operator long() const
+	{
+		return ReturnNum<long>();
+	}
+
+	operator unsigned long() const
+	{
+		return ReturnNum<unsigned long>();
+	}
+
 	operator double() const
 	{
 		return ReturnNum<double>();
