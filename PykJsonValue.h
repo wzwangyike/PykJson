@@ -103,9 +103,16 @@ public:
 		memset(&value.m_value, 0, sizeof(ValueHolder));
 	}
 
-	CPykJsonValue(const char *pBegin, const char *pEnd = NULL, bool bParse = false)
+	CPykJsonValue(const char *pBegin, const char *pEnd = NULL)
 	{
-		InitByString(pBegin, pEnd, bParse);
+		InitByString(pBegin, pEnd);
+	}
+	//该构造函数直接使用字符串，用于使用new 数组传入 防止多次开辟空间
+	CPykJsonValue(char**pBegin)
+	{
+		m_type = ValueType::stringValue;
+		m_value.m_string = *pBegin;
+		*pBegin = NULL;
 	}
 
 	CPykJsonValue(const std::string &str) : CPykJsonValue(str.c_str(), str.c_str() + str.length())
@@ -510,7 +517,6 @@ public:
 	}
 
 private:
-	friend class CPykJsonPointer<CPykJsonValue>;
 	friend class CPykJsonRead;
 	typedef std::map<std::string, CPykJsonValue> ObjectMap;
 	typedef std::vector<CPykJsonValue> ObjectVec;
@@ -526,7 +532,7 @@ private:
 		ObjectVec *m_ver;
 	} m_value = { 0 };
 
-	void InitByString(const char* pBegin, const char *pEnd = NULL, bool bParse = false)
+	void InitByString(const char* pBegin, const char *pEnd = NULL)
 	{
 		if (!pBegin)
 		{
@@ -550,10 +556,6 @@ private:
 			m_value.m_string = new char[nLen + 1];
 			memset(m_value.m_string, 0, nLen + 1);
 			memcpy(m_value.m_string, pBegin, nLen);
-			if (bParse)
-			{
-				ParseJsonString(m_value.m_string, nLen);
-			}
 		}
 	}
 
@@ -633,49 +635,6 @@ private:
 		str.insert(nFind, 1, '\\');
 		nCount++;
 		nFind++;
-	}
-	
-	void ParseJsonString(char * lpString, size_t lenght)
-	{
-		for (char * lp = lpString; lp = strchr(lp, '\\'); lp++)
-		{
-			switch (*(lp + 1))
-			{
-			case '\\':
-			case '\"':
-			{
-				memmove(lp, lp + 1, lenght - (lp - lpString));
-				break;
-			}
-			case 'b':
-			{
-				memmove(lp, lp + 1, lenght - (lp - lpString));
-				*lp = '\b';
-				break;
-			}
-			case 't':
-			{
-				memmove(lp, lp + 1, lenght - (lp - lpString));
-				*lp = '\t';
-				break;
-			}
-			case 'n':
-			{
-				memmove(lp, lp + 1, lenght - (lp - lpString));
-				*lp = '\n';
-				break;
-			}
-			case 'r':
-			{
-				memmove(lp, lp + 1, lenght - (lp - lpString));
-				*lp = '\r';
-				break;
-			}
-			default:
-				break;
-			}
-			
-		}
 	}
 
 	std::string DealJsonString(std::string str)

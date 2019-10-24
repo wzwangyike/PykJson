@@ -2,7 +2,9 @@
 
 #include "PykJsonValue.h"
 #include <cassert>
+#ifdef SupportWideChar
 #include "PykMgr.h"
+#endif
 enum class json_encoding
 {
 	encoding_auto,
@@ -24,6 +26,7 @@ public:
 		}
 		switch (encode)
 		{
+#ifdef SupportWideChar
 		case json_encoding::encoding_wchar:
 		{
 			CPykMgr mgr((const wchar_t*)pBegin);
@@ -31,6 +34,7 @@ public:
 			return InterParse(lp, lp + strlen(lp), value);
 			break;
 		}
+#endif
 		case json_encoding::encoding_ansi:
 		case json_encoding::encoding_utf8:
 			return InterParse(pBegin, pBegin + strlen(pBegin), value);
@@ -50,6 +54,7 @@ public:
 		}
 		switch (encode)
 		{
+#ifdef SupportWideChar
 		case json_encoding::encoding_wchar:
 		{
 			CPykMgr mgr((const wchar_t*)pBegin, (const wchar_t*)pEnd);
@@ -57,6 +62,7 @@ public:
 			return InterParse(lp, lp + strlen(lp), value);
 			break;
 		}
+#endif
 		case json_encoding::encoding_ansi:
 		case json_encoding::encoding_utf8:
 			return InterParse(pBegin, pEnd, value);
@@ -111,8 +117,8 @@ private:
 
 	json_encoding GetEncode(const char* pBegin, int &nOffset)
 	{
-		BYTE pUtf[4] = { 0xEF, 0xBB, 0xBF, 0x0 };
-		BYTE pUni[3] = { 0xFF, 0xFE, 0x0 };
+		unsigned char pUtf[4] = { 0xEF, 0xBB, 0xBF, 0x0 };
+		unsigned char pUni[3] = { 0xFF, 0xFE, 0x0 };
 
 		if (0 == memcmp(pBegin, pUtf, 3))
 		{
@@ -206,7 +212,48 @@ private:
 		}
 		return value;
 	}
+	void ParseJsonString(char* lpString, size_t lenght)
+	{
+		for (char* lp = lpString; lp = strchr(lp, '\\'); lp++)
+		{
+			switch (*(lp + 1))
+			{
+			case '\\':
+			case '\"':
+			{
+				memmove(lp, lp + 1, lenght - (lp - lpString));
+				break;
+			}
+			case 'b':
+			{
+				memmove(lp, lp + 1, lenght - (lp - lpString));
+				*lp = '\b';
+				break;
+			}
+			case 't':
+			{
+				memmove(lp, lp + 1, lenght - (lp - lpString));
+				*lp = '\t';
+				break;
+			}
+			case 'n':
+			{
+				memmove(lp, lp + 1, lenght - (lp - lpString));
+				*lp = '\n';
+				break;
+			}
+			case 'r':
+			{
+				memmove(lp, lp + 1, lenght - (lp - lpString));
+				*lp = '\r';
+				break;
+			}
+			default:
+				break;
+			}
 
+		}
+	}
 	CPykJsonValue ReadValue()
 	{
 		for (; m_pBegin < m_pEnd;)
@@ -221,8 +268,16 @@ private:
 			case '\"':
 			{
 				m_pBegin++;
-				const char* pStr = m_pBegin;
-				return CPykJsonValue(pStr, FindNextQuotes(), true);
+				const char* pBegin = m_pBegin;
+				const char* pEnd = FindNextQuotes();
+
+				int nLen = (int)(pEnd - pBegin);
+				char *pString = new char[nLen + 1];
+				memset(pString, 0, nLen + 1);
+				memcpy(pString, pBegin, nLen);
+				ParseJsonString(pString, nLen);
+
+				return CPykJsonValue(&pString);
 			}
 			case '{':
 			{
