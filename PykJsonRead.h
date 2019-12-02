@@ -277,7 +277,7 @@ private:
 				memcpy(pString, pBegin, nLen);
 				ParseJsonString(pString, nLen);
 
-				return CPykJsonValue(&pString);
+				return CPykJsonValue(&pString, nLen + 1);
 			}
 			case '{':
 			{
