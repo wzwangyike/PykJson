@@ -23,7 +23,6 @@ class CPykJsonPointer : public CPykSharePointer<T>
 
 #define REMOVE(type) \
 	void Remove(type value, bool bAll = true){\
-	this->Init();\
 	if (this->m_pValue)\
 		this->m_pValue->Remove(value, bAll);\
 	}
