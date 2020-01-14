@@ -94,6 +94,11 @@ public:
 		return { this->m_ptrRoot, this->m_pValue->Append(std::forward<T>(value)) };
 	}
 #endif
+	CPykJsonPointer AppendNew()
+	{
+		this->Init();
+		return { this->m_ptrRoot, this->m_pValue->AppendNew() };
+	}
 	//数组和对象删除数据
 	REMOVE(const char *)
 #ifdef SupportWideChar

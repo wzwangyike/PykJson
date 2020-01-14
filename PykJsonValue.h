@@ -372,6 +372,23 @@ public:
 		return nullptr;
 	}
 
+	//数据添加
+	CPykJsonValue* AppendNew()
+	{
+		if (ValueType::nullValue == m_type)
+		{
+			m_type = ValueType::arrayValue;
+			m_value.m_ver = new ObjectVec;
+		}
+
+		if (ValueType::arrayValue == m_type)
+		{
+			(*m_value.m_ver).push_back(CPykJsonValue());
+			return &(*m_value.m_ver).back();
+		}
+		return nullptr;
+	}
+
 	void Remove(const char* pStr, bool bAll = true)
 	{
 		if (ValueType::mapValue == m_type)
