@@ -5,6 +5,11 @@
 #ifdef SupportWideChar
 #include "PykMgr.h"
 #endif
+#ifdef WIN32
+#include <Windows.h>
+#else
+#include <iconv.h>
+#endif
 enum class json_encoding
 {
 	encoding_auto,
@@ -168,7 +173,7 @@ private:
 					return value;
 				}
 				SkipSpaceAndColon();
-				(*value.m_value.m_map)[{pStr, pFind}] = ReadValue();
+				value.AddKeyValue({ pStr, pFind }, ReadValue());
 				SkipSpaceAndComma();
 				continue;
 			}
@@ -221,31 +226,53 @@ private:
 			case '\\':
 			case '\"':
 			{
-				memmove(lp, lp + 1, lenght - (lp - lpString));
+				memmove(lp, lp + 1, lenght - (lp + 1 - lpString) + 1);
 				break;
 			}
 			case 'b':
 			{
-				memmove(lp, lp + 1, lenght - (lp - lpString));
+				memmove(lp, lp + 1, lenght - (lp + 1 - lpString) + 1);
 				*lp = '\b';
 				break;
 			}
 			case 't':
 			{
-				memmove(lp, lp + 1, lenght - (lp - lpString));
+				memmove(lp, lp + 1, lenght - (lp + 1 - lpString) + 1);
 				*lp = '\t';
 				break;
 			}
 			case 'n':
 			{
-				memmove(lp, lp + 1, lenght - (lp - lpString));
+				memmove(lp, lp + 1, lenght - (lp + 1 - lpString) + 1);
 				*lp = '\n';
 				break;
 			}
 			case 'r':
 			{
-				memmove(lp, lp + 1, lenght - (lp - lpString));
+				memmove(lp, lp + 1, lenght - (lp + 1 - lpString) + 1);
 				*lp = '\r';
+				break;
+			}
+			case 'u':
+			{
+				wchar_t wc;
+				char cTemp[5] = { 0 };
+				memcpy(cTemp, lp + 2, 4);
+				wc = (short)strtol(cTemp, NULL, 16);
+#ifdef WIN32
+				int nSize = WideCharToMultiByte(CP_UTF8, 0, &wc, 1, cTemp, 5, NULL, NULL);
+#else
+				//No verification
+#error "please modify it"
+				iconv_t env;
+				env = iconv_open("UTF-8", "WCHAR_T");
+				size_t nSrcSize = 1;
+				size_t nDesSize = 5;
+				int nSize = iconv(env, (char**)&&wc, (size_t*)&nSrcSize, (char**)&cTemp, (size_t*)&nDesSize);
+				iconv_close(env);
+#endif // WIN32
+				memmove(lp + nSize, lp + 6, lenght - (lp + 6 - lpString) + 1);
+				memcpy(lp, cTemp, nSize);
 				break;
 			}
 			default:

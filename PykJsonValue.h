@@ -1,5 +1,7 @@
 #pragma once
 
+//#define NO_SORT
+
 #include <map>
 #include <vector>
 #include <string>
@@ -211,7 +213,19 @@ public:
 		assert(pName);
 		if (ValueType::mapValue == m_type)
 		{
+#ifdef NO_SORT
+			auto it = (*m_value.m_map).begin();
+			for (;it != (*m_value.m_map).end(); it++)
+			{
+				if (0 == it->first.compare(pName))
+				{
+					break;
+				}
+			}
+#else
 			auto it = (*m_value.m_map).find(pName);
+#endif // NO_SORT
+			
 			if ((*m_value.m_map).end() != it)
 			{
 				return GetTrueValue(&(it->second));
@@ -232,7 +246,19 @@ public:
 
 		if (ValueType::mapValue == m_type)
 		{
+#ifdef NO_SORT
+			for (auto it = (*m_value.m_map).begin(); it != (*m_value.m_map).end(); it++)
+			{
+				if (0 == it->first.compare(pName))
+				{
+					return GetTrueValue(&it->second);
+				}
+			}
+			(*m_value.m_map).push_back(std::pair<std::string, CPykJsonValue>(pName, NULL));
+			return &(*m_value.m_map).back().second;
+#else
 			return GetTrueValue(&(*m_value.m_map)[pName]);
+#endif // NO_SORT
 		}
 		
 		return nullptr;
@@ -389,11 +415,53 @@ public:
 		return nullptr;
 	}
 
+	bool AddKeyValue(std::string strKey, CPykJsonValue&& value)
+	{
+		assert(strKey.length());
+		if (ValueType::nullValue == m_type)
+		{
+			m_type = ValueType::mapValue;
+			m_value.m_map = new ObjectMap;
+		}
+
+		if (ValueType::mapValue == m_type)
+		{
+#ifdef NO_SORT
+			for (auto it = (*m_value.m_map).begin(); it != (*m_value.m_map).end(); it++)
+			{
+				if (it->first == strKey)
+				{
+					it->first = std::forward<CPykJsonValue>(value);
+					return true;
+				}
+			}
+			(*m_value.m_map).push_back(std::pair<std::string, CPykJsonValue>(std::forward<std::string>(strKey), std::forward<CPykJsonValue>(value)));
+			return true;
+#else
+			(*m_value.m_map)[std::forward<std::string>(strKey)] = std::forward<CPykJsonValue>(value);
+			return true;
+#endif // NO_SORT
+		}
+
+		return false;
+	}
+
 	void Remove(const char* pStr, bool bAll = true)
 	{
 		if (ValueType::mapValue == m_type)
 		{
+#ifdef NO_SORT
+			for (auto it = (*m_value.m_map).begin(); it != (*m_value.m_map).end(); it++)
+			{
+				if (0 == it->first.compare(pStr))
+				{
+					(*m_value.m_map).erase(it);
+					return;
+				}
+			}
+#else
 			(*m_value.m_map).erase(pStr);
+#endif // NO_SORT
 		}
 		else
 		{
@@ -602,7 +670,11 @@ public:
 
 private:
 	friend class CPykJsonRead;
+#ifdef NO_SORT
+	typedef std::vector<std::pair<std::string, CPykJsonValue>> ObjectMap;
+#else
 	typedef std::map<std::string, CPykJsonValue> ObjectMap;
+#endif
 	typedef std::vector<CPykJsonValue> ObjectVec;
 	ValueType m_type;
 	union ValueHolder
