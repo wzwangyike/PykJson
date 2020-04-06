@@ -254,7 +254,7 @@ public:
 					return GetTrueValue(&it->second);
 				}
 			}
-			(*m_value.m_map).push_back(std::pair<std::string, CPykJsonValue>(pName, NULL));
+			(*m_value.m_map).push_back(std::pair<std::string, CPykJsonValue>(pName, CPykJsonValue()));
 			return &(*m_value.m_map).back().second;
 #else
 			return GetTrueValue(&(*m_value.m_map)[pName]);
