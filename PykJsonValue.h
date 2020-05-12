@@ -112,14 +112,6 @@ public:
 	{
 		InitByString(pBegin, pEnd);
 	}
-	//该构造函数直接使用字符串，用于使用new 数组传入 防止多次开辟空间
-	CPykJsonValue(char**pBegin, unsigned int nLen)
-	{
-		m_type = ValueType::stringValue;
-		m_value.m_string = *pBegin;
-		m_stringLen = nLen;
-		*pBegin = NULL;
-	}
 
 	CPykJsonValue(CPykJsonValue *value)
 	{

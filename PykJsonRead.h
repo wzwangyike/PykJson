@@ -5,11 +5,6 @@
 #ifdef SupportWideChar
 #include "PykMgr.h"
 #endif
-#ifdef WIN32
-#include <Windows.h>
-#else
-#include <iconv.h>
-#endif
 enum class json_encoding
 {
 	encoding_auto,
@@ -259,18 +254,25 @@ private:
 				char cTemp[5] = { 0 };
 				memcpy(cTemp, lp + 2, 4);
 				wc = (short)strtol(cTemp, NULL, 16);
-#ifdef WIN32
-				int nSize = WideCharToMultiByte(CP_UTF8, 0, &wc, 1, cTemp, 5, NULL, NULL);
-#else
-				//No verification
-#error "please modify it"
-				iconv_t env;
-				env = iconv_open("UTF-8", "WCHAR_T");
-				size_t nSrcSize = 1;
-				size_t nDesSize = 5;
-				int nSize = iconv(env, (char**)&&wc, (size_t*)&nSrcSize, (char**)&cTemp, (size_t*)&nDesSize);
-				iconv_close(env);
-#endif // WIN32
+				int nSize = 0;
+				if (wc <= 0x007f)
+				{
+					cTemp[0] = (char)(wc & 0x007f);
+					nSize = 1;
+				}
+				else if (wc >= 0x0080 && wc <= 0x07ff)
+				{
+					cTemp[0] = (char)(((wc & 0x07c0) >> 6) | 0x00e0);
+					cTemp[1] = (char)((wc & 0x003f) | 0x0080);
+					nSize = 2;
+				}
+				else if (wc >= 0x0800)
+				{
+					cTemp[0] = (char)(((wc & 0xf000) >> 12) | 0x00e0);
+					cTemp[1] = (char)(((wc & 0x0fc0) >> 6) | 0x0080);
+					cTemp[2] = (char)((wc & 0x003f) | 0x0080);
+					nSize = 3;
+				}
 				memmove(lp + nSize, lp + 6, lenght - (lp + 6 - lpString) + 1);
 				memcpy(lp, cTemp, nSize);
 				break;
@@ -297,14 +299,15 @@ private:
 				m_pBegin++;
 				const char* pBegin = m_pBegin;
 				const char* pEnd = FindNextQuotes();
-
 				int nLen = (int)(pEnd - pBegin);
-				char *pString = new char[nLen + 1];
-				memset(pString, 0, nLen + 1);
-				memcpy(pString, pBegin, nLen);
-				ParseJsonString(pString, nLen);
-
-				return CPykJsonValue(&pString, nLen + 1);
+				CPykJsonValue value = CPykJsonValue();
+				value.m_type = ValueType::stringValue;
+				value.m_value.m_string = new char[nLen + 1];
+				value.m_stringLen = nLen + 1;
+				memset(value.m_value.m_string, 0, nLen + 1);
+				memcpy(value.m_value.m_string, pBegin, nLen);
+				ParseJsonString(value.m_value.m_string, nLen);
+				return value;
 			}
 			case '{':
 			{
