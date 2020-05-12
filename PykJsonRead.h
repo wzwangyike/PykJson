@@ -300,7 +300,7 @@ private:
 				const char* pBegin = m_pBegin;
 				const char* pEnd = FindNextQuotes();
 				int nLen = (int)(pEnd - pBegin);
-				CPykJsonValue value = CPykJsonValue();
+				CPykJsonValue value;
 				value.m_type = ValueType::stringValue;
 				value.m_value.m_string = new char[nLen + 1];
 				value.m_stringLen = nLen + 1;
