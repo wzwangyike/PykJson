@@ -579,59 +579,58 @@ public:
 			case '\\':
 			case '\"':
 			{
-				memmove(lp, lp + 1, m_stringLen - (lp + 1 - m_value.m_string) + 1);
+				memmove(lp, lp + 1, m_stringLen + 1 - (lp + 1 - m_value.m_string));
 				break;
 			}
 			case 'b':
 			{
-				memmove(lp, lp + 1, m_stringLen - (lp + 1 - m_value.m_string) + 1);
+				memmove(lp, lp + 1, m_stringLen + 1 - (lp + 1 - m_value.m_string));
 				*lp = '\b';
 				break;
 			}
 			case 't':
 			{
-				memmove(lp, lp + 1, m_stringLen - (lp + 1 - m_value.m_string) + 1);
+				memmove(lp, lp + 1, m_stringLen + 1 - (lp + 1 - m_value.m_string));
 				*lp = '\t';
 				break;
 			}
 			case 'n':
 			{
-				memmove(lp, lp + 1, m_stringLen - (lp + 1 - m_value.m_string) + 1);
+				memmove(lp, lp + 1, m_stringLen + 1 - (lp + 1 - m_value.m_string));
 				*lp = '\n';
 				break;
 			}
 			case 'r':
 			{
-				memmove(lp, lp + 1, m_stringLen - (lp + 1 - m_value.m_string) + 1);
+				memmove(lp, lp + 1, m_stringLen + 1 - (lp + 1 - m_value.m_string));
 				*lp = '\r';
 				break;
 			}
 			case 'u':
 			{
-				wchar_t wc;
-				char cTemp[5] = { 0 };
+				unsigned long luicode;
+				int nUnicodeUse = 0;
+				char cTemp[6] = { 0 };
 				memcpy(cTemp, lp + 2, 4);
-				wc = (short)strtol(cTemp, NULL, 16);
-				int nSize = 0;
-				if (wc <= 0x007f)
+				luicode = strtoul(cTemp, NULL, 16);
+				if (luicode >= 0xD800 && luicode < 0xDC00)
 				{
-					cTemp[0] = (char)(wc & 0x007f);
-					nSize = 1;
+					nUnicodeUse = 12;
+					assert('\\' == *(lp + 6));
+					assert('u' == *(lp + 7));
+					unsigned short s2;
+					memcpy(cTemp, lp + 8, 4);
+					s2 = (unsigned short)strtoul(cTemp, NULL, 16);
+					assert(s2 >= 0xDC00);
+					assert(s2 < 0xE000);
+					luicode = 0x10000 + ((luicode - 0xD800) << 10) + (s2 - 0xDC00);
 				}
-				else if (wc >= 0x0080 && wc <= 0x07ff)
+				else
 				{
-					cTemp[0] = (char)(((wc & 0x07c0) >> 6) | 0x00e0);
-					cTemp[1] = (char)((wc & 0x003f) | 0x0080);
-					nSize = 2;
+					nUnicodeUse = 6;
 				}
-				else if (wc >= 0x0800)
-				{
-					cTemp[0] = (char)(((wc & 0xf000) >> 12) | 0x00e0);
-					cTemp[1] = (char)(((wc & 0x0fc0) >> 6) | 0x0080);
-					cTemp[2] = (char)((wc & 0x003f) | 0x0080);
-					nSize = 3;
-				}
-				memmove(lp + nSize, lp + 6, m_stringLen - (lp + 6 - m_value.m_string) + 1);
+				int nSize = unicode_to_utf8(luicode, cTemp, 6);
+				memmove(lp + nSize, lp + nUnicodeUse, m_stringLen + 1 - (lp + nUnicodeUse - m_value.m_string));
 				memcpy(lp, cTemp, nSize);
 				break;
 			}
@@ -952,6 +951,66 @@ private:
 			assert(false);
 		}
 		return "";
+	}
+
+	int unicode_to_utf8(unsigned long unic, char* pOutput, int outSize)
+	{
+		assert(pOutput != NULL);
+		assert(outSize >= 6);
+
+		if (unic <= 0x0000007F)
+		{
+			// * U-00000000 - U-0000007F:  0xxxxxxx
+			*pOutput = (unic & 0x7F);
+			return 1;
+		}
+		else if (unic >= 0x00000080 && unic <= 0x000007FF)
+		{
+			// * U-00000080 - U-000007FF:  110xxxxx 10xxxxxx
+			*(pOutput + 1) = (unic & 0x3F) | 0x80;
+			*pOutput = ((unic >> 6) & 0x1F) | 0xC0;
+			return 2;
+		}
+		else if (unic >= 0x00000800 && unic <= 0x0000FFFF)
+		{
+			// * U-00000800 - U-0000FFFF:  1110xxxx 10xxxxxx 10xxxxxx
+			*(pOutput + 2) = (unic & 0x3F) | 0x80;
+			*(pOutput + 1) = ((unic >> 6) & 0x3F) | 0x80;
+			*pOutput = ((unic >> 12) & 0x0F) | 0xE0;
+			return 3;
+		}
+		else if (unic >= 0x00010000 && unic <= 0x001FFFFF)
+		{
+			// * U-00010000 - U-001FFFFF:  11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
+			*(pOutput + 3) = (unic & 0x3F) | 0x80;
+			*(pOutput + 2) = ((unic >> 6) & 0x3F) | 0x80;
+			*(pOutput + 1) = ((unic >> 12) & 0x3F) | 0x80;
+			*pOutput = ((unic >> 18) & 0x07) | 0xF0;
+			return 4;
+		}
+		else if (unic >= 0x00200000 && unic <= 0x03FFFFFF)
+		{
+			// * U-00200000 - U-03FFFFFF:  111110xx 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx
+			*(pOutput + 4) = (unic & 0x3F) | 0x80;
+			*(pOutput + 3) = ((unic >> 6) & 0x3F) | 0x80;
+			*(pOutput + 2) = ((unic >> 12) & 0x3F) | 0x80;
+			*(pOutput + 1) = ((unic >> 18) & 0x3F) | 0x80;
+			*pOutput = ((unic >> 24) & 0x03) | 0xF8;
+			return 5;
+		}
+		else if (unic >= 0x04000000 && unic <= 0x7FFFFFFF)
+		{
+			// * U-04000000 - U-7FFFFFFF:  1111110x 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx
+			*(pOutput + 5) = (unic & 0x3F) | 0x80;
+			*(pOutput + 4) = ((unic >> 6) & 0x3F) | 0x80;
+			*(pOutput + 3) = ((unic >> 12) & 0x3F) | 0x80;
+			*(pOutput + 2) = ((unic >> 18) & 0x3F) | 0x80;
+			*(pOutput + 1) = ((unic >> 24) & 0x3F) | 0x80;
+			*pOutput = ((unic >> 30) & 0x01) | 0xFC;
+			return 6;
+		}
+
+		return 0;
 	}
 };
 
