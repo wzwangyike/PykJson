@@ -172,6 +172,10 @@ public:
 		return this->m_pValue ? this->m_pValue->GetStringLen() : 0;
 	}
 	
+	T* GetJsonPoint()
+	{
+		return this->m_pValue;
+	}
 
 	std::string ToString(std::string def = "null")
 	{
@@ -185,7 +189,7 @@ public:
 
 	JsonIterator begin()
 	{
-		if (this->m_pValue && this->m_pValue->GetType() == ValueType::arrayValue)
+		if (this->m_pValue)
 		{
 			return JsonIterator(0, *this);
 		}
@@ -193,7 +197,7 @@ public:
 	}
 	JsonIterator end()
 	{
-		if (this->m_pValue && this->m_pValue->GetType() == ValueType::arrayValue)
+		if (this->m_pValue)
 		{
 			return JsonIterator(this->m_pValue->Size(), *this);
 		}
@@ -244,13 +248,51 @@ public:
 
 	CPykJsonPointer<T> operator*()
 	{
-		return m_Root[m_nIndex];
+		switch (m_Root.GetType())
+		{
+		case ValueType::arrayValue:
+		{
+			return m_Root[m_nIndex];
+		}
+		case ValueType::mapValue:
+		{
+			std::string strKey;
+			CPykJsonPointer<T> value = m_Root.GetMapValue(m_nIndex, strKey);
+
+			CPykJsonPointer<T> t;
+			t[strKey.c_str()] = value.GetJsonPoint();
+			return t;
+		}
+		}
+		
+		return m_Root;
 	}
 	
 	CPykJsonPointer<T>* operator->()
 	{
-		m_Temp.Reset(m_Root[m_nIndex]);
-		return &m_Temp;
+		switch (m_Root.GetType())
+		{
+		case ValueType::arrayValue:
+		{
+			m_Temp.Reset(m_Root[m_nIndex]);
+			return &m_Temp;
+		}
+		case ValueType::mapValue:
+		{
+			std::string strKey;
+			CPykJsonPointer<T> value = m_Root.GetMapValue(m_nIndex, strKey);
+			CPykJsonPointer<T> t;
+			t[strKey.c_str()] = value.GetJsonPoint();
+			m_Temp.Reset(t);
+			return &m_Temp;
+		}
+		}
+		return &m_Root;
+	}
+
+	CPykJsonPointer<T> GetKeyValue(std::string &strKey)
+	{
+		return m_Root.GetMapValue(m_nIndex, strKey);
 	}
 
 	const CpykJsonIterator<T>& operator++()

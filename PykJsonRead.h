@@ -2,6 +2,7 @@
 
 #include "PykJsonValue.h"
 #include <cassert>
+
 #ifdef SupportWideChar
 #include "PykMgr.h"
 #endif
@@ -9,8 +10,8 @@ enum class json_encoding
 {
 	encoding_auto,
 	encoding_utf8,
-	encoding_wchar,
-	encoding_ansi
+	encoding_utf16le,
+	encoding_utf16be
 };
 
 class CPykJsonRead
@@ -18,30 +19,7 @@ class CPykJsonRead
 public:
 	bool parse(const char* pBegin, CPykJsonValueEx& value, json_encoding encode = json_encoding::encoding_auto)
 	{
-		if (json_encoding::encoding_auto == encode)
-		{
-			int nOffset = 0;
-			encode = GetEncode(pBegin, nOffset);
-			pBegin += nOffset;
-		}
-		switch (encode)
-		{
-#ifdef SupportWideChar
-		case json_encoding::encoding_wchar:
-		{
-			CPykMgr mgr((const wchar_t*)pBegin);
-			LPCSTR lp = mgr;
-			return InterParse(lp, lp + strlen(lp), value);
-			break;
-		}
-#endif
-		case json_encoding::encoding_ansi:
-		case json_encoding::encoding_utf8:
-			return InterParse(pBegin, pBegin + strlen(pBegin), value);
-		default:
-			break;
-		}
-		return false;
+		return parse(pBegin, pBegin + strlen(pBegin), value, encode);
 	}
 
 	bool parse(const char* pBegin, const char* pEnd, CPykJsonValueEx& value, json_encoding encode = json_encoding::encoding_auto)
@@ -55,15 +33,19 @@ public:
 		switch (encode)
 		{
 #ifdef SupportWideChar
-		case json_encoding::encoding_wchar:
+		case json_encoding::encoding_utf16le:
 		{
-			CPykMgr mgr((const wchar_t*)pBegin, (const wchar_t*)pEnd);
+			CPykMgrTemplate<CP_UTF8> mgr((const wchar_t*)pBegin, (const wchar_t*)pEnd);
 			LPCSTR lp = mgr;
 			return InterParse(lp, lp + strlen(lp), value);
 			break;
 		}
+		case json_encoding::encoding_utf16be:
+		{
+
+			break;
+		}
 #endif
-		case json_encoding::encoding_ansi:
 		case json_encoding::encoding_utf8:
 			return InterParse(pBegin, pEnd, value);
 		default:
@@ -93,57 +75,51 @@ private:
 
 	json_encoding GetEncode(const char* pBegin, const char *pEnd, int& nOffset)
 	{
-		json_encoding encode = GetEncode(pBegin, nOffset);
-		if (json_encoding::encoding_ansi == encode)
+		switch (*pBegin)
 		{
-			const char* pFind = pBegin;
-			while (pFind != pEnd)
+		case 0xEF:
+		{
+			if (3 <= pEnd - pBegin &&
+				0xBB == *(pBegin + 1) &&
+				0xBF == *(pBegin + 1))
 			{
-				if ('\0' == *pFind)
-				{
-					encode = json_encoding::encoding_wchar;
-					break;
-				}
-				if (*pFind >= '0xE4' && *pFind <= 'E9')
-				{
-					encode = json_encoding::encoding_utf8;
-					break;
-				}
-				pFind++;
+				nOffset = 3;
+				return json_encoding::encoding_utf8;
 			}
+			break;
 		}
-		return encode;
-	}
-
-	json_encoding GetEncode(const char* pBegin, int &nOffset)
-	{
-		unsigned char pUtf[4] = { 0xEF, 0xBB, 0xBF, 0x0 };
-		unsigned char pUni[3] = { 0xFF, 0xFE, 0x0 };
-
-		if (0 == memcmp(pBegin, pUtf, 3))
+		case 0xFF:
 		{
-			nOffset = 3;
-			return json_encoding::encoding_utf8;
+			if (2 <= pEnd - pBegin &&
+				0xFE == *(pBegin + 1))
+			{
+				nOffset = 2;
+				return json_encoding::encoding_utf16le;
+			}
+			break;
 		}
-		else if (0 == memcmp(pBegin, pUni, 2))
+		case 0xFE:
 		{
-			nOffset = 2;
-			return json_encoding::encoding_wchar;
+			if (2 <= pEnd - pBegin &&
+				0xFF == *(pBegin + 1))
+			{
+				nOffset = 2;
+				return json_encoding::encoding_utf16be;
+			}
+			break;
 		}
-		else
-		{
-			nOffset = 0;
-			return json_encoding::encoding_ansi;
+		default:
+			break;
 		}
+		nOffset = 0;
+		return json_encoding::encoding_utf8;
 	}
 
 	CPykJsonValue ReadMap()
 	{
 		assert(*m_pBegin == '{');
-		CPykJsonValue value;
+		CPykJsonValue value(ValueType::mapValue);
 		m_pBegin++;
-		value.m_type = ValueType::mapValue;
-		value.m_value.m_map = new CPykJsonValue::ObjectMap;
 		for (; m_pBegin < m_pEnd;)
 		{
 			if (IsNoMeanChar(*m_pBegin))
@@ -184,10 +160,9 @@ private:
 
 	CPykJsonValue ReadArray()
 	{
-		CPykJsonValue value;
+		assert(*m_pBegin == '[');
+		CPykJsonValue value(ValueType::arrayValue);
 		m_pBegin++;
-		value.m_type = ValueType::arrayValue;
-		value.m_value.m_ver = new CPykJsonValue::ObjectVec;
 		for (; m_pBegin < m_pEnd;)
 		{
 			if (IsNoMeanChar(*m_pBegin))
@@ -204,7 +179,7 @@ private:
 			}
 			default:
 			{
-				(*value.m_value.m_ver).push_back(ReadValue());
+				value.Append(ReadValue());
 				SkipSpaceAndComma();
 				continue;
 			}
@@ -212,77 +187,7 @@ private:
 		}
 		return value;
 	}
-	void ParseJsonString(char* lpString, size_t lenght)
-	{
-		for (char* lp = lpString; lp = strchr(lp, '\\'); lp++)
-		{
-			switch (*(lp + 1))
-			{
-			case '\\':
-			case '\"':
-			{
-				memmove(lp, lp + 1, lenght - (lp + 1 - lpString) + 1);
-				break;
-			}
-			case 'b':
-			{
-				memmove(lp, lp + 1, lenght - (lp + 1 - lpString) + 1);
-				*lp = '\b';
-				break;
-			}
-			case 't':
-			{
-				memmove(lp, lp + 1, lenght - (lp + 1 - lpString) + 1);
-				*lp = '\t';
-				break;
-			}
-			case 'n':
-			{
-				memmove(lp, lp + 1, lenght - (lp + 1 - lpString) + 1);
-				*lp = '\n';
-				break;
-			}
-			case 'r':
-			{
-				memmove(lp, lp + 1, lenght - (lp + 1 - lpString) + 1);
-				*lp = '\r';
-				break;
-			}
-			case 'u':
-			{
-				wchar_t wc;
-				char cTemp[5] = { 0 };
-				memcpy(cTemp, lp + 2, 4);
-				wc = (short)strtol(cTemp, NULL, 16);
-				int nSize = 0;
-				if (wc <= 0x007f)
-				{
-					cTemp[0] = (char)(wc & 0x007f);
-					nSize = 1;
-				}
-				else if (wc >= 0x0080 && wc <= 0x07ff)
-				{
-					cTemp[0] = (char)(((wc & 0x07c0) >> 6) | 0x00e0);
-					cTemp[1] = (char)((wc & 0x003f) | 0x0080);
-					nSize = 2;
-				}
-				else if (wc >= 0x0800)
-				{
-					cTemp[0] = (char)(((wc & 0xf000) >> 12) | 0x00e0);
-					cTemp[1] = (char)(((wc & 0x0fc0) >> 6) | 0x0080);
-					cTemp[2] = (char)((wc & 0x003f) | 0x0080);
-					nSize = 3;
-				}
-				memmove(lp + nSize, lp + 6, lenght - (lp + 6 - lpString) + 1);
-				memcpy(lp, cTemp, nSize);
-				break;
-			}
-			default:
-				break;
-			}
-
-		}
-	}
+	
 	CPykJsonValue ReadValue()
 	{
 		for (; m_pBegin < m_pEnd;)
@@ -300,13 +205,8 @@ private:
 				const char* pBegin = m_pBegin;
 				const char* pEnd = FindNextQuotes();
 				int nLen = (int)(pEnd - pBegin);
-				CPykJsonValue value;
-				value.m_type = ValueType::stringValue;
-				value.m_value.m_string = new char[nLen + 1];
-				value.m_stringLen = nLen + 1;
-				memset(value.m_value.m_string, 0, nLen + 1);
-				memcpy(value.m_value.m_string, pBegin, nLen);
-				ParseJsonString(value.m_value.m_string, nLen);
+				CPykJsonValue value(pBegin, pEnd);
+				value.ParseSelfString();
 				return value;
 			}
 			case '{':

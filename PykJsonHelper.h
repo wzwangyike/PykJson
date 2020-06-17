@@ -31,6 +31,43 @@ public:
 					unsigned int nPos = way["Pos"];
 					jsonFind.Reset(jsonFind[nPos]);
 				}
+				else if (way["Find"])
+				{
+					if (way["Multi"])
+					{
+						std::string str;
+						for (CPykJsonValueEx find : jsonFind)
+						{
+							for (CPykJsonValueEx sub : way["Find"])
+							{
+								if (strstr(find, sub))
+								{
+									str += find;
+									str += way["Connect"];
+								}
+							}
+						}
+						if (!str.empty())
+						{
+							str.pop_back();
+						}
+						return CPykJsonValueEx(str);
+					}
+					else
+					{
+						for (CPykJsonValueEx find : jsonFind)
+						{
+							for (CPykJsonValueEx sub : way["Find"])
+							{
+								if (strstr(find, sub))
+								{
+									jsonFind.Reset(find);
+									return jsonFind;
+								}
+							}
+						}
+					}
+				}
 			}
 			if (!jsonFind)
 			{

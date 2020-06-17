@@ -570,6 +570,78 @@ public:
 		return m_stringLen;
 	}
 
+	void ParseSelfString()
+	{
+		for (char* lp = m_value.m_string; lp = strchr(lp, '\\'); lp++)
+		{
+			switch (*(lp + 1))
+			{
+			case '\\':
+			case '\"':
+			{
+				memmove(lp, lp + 1, m_stringLen - (lp + 1 - m_value.m_string) + 1);
+				break;
+			}
+			case 'b':
+			{
+				memmove(lp, lp + 1, m_stringLen - (lp + 1 - m_value.m_string) + 1);
+				*lp = '\b';
+				break;
+			}
+			case 't':
+			{
+				memmove(lp, lp + 1, m_stringLen - (lp + 1 - m_value.m_string) + 1);
+				*lp = '\t';
+				break;
+			}
+			case 'n':
+			{
+				memmove(lp, lp + 1, m_stringLen - (lp + 1 - m_value.m_string) + 1);
+				*lp = '\n';
+				break;
+			}
+			case 'r':
+			{
+				memmove(lp, lp + 1, m_stringLen - (lp + 1 - m_value.m_string) + 1);
+				*lp = '\r';
+				break;
+			}
+			case 'u':
+			{
+				wchar_t wc;
+				char cTemp[5] = { 0 };
+				memcpy(cTemp, lp + 2, 4);
+				wc = (short)strtol(cTemp, NULL, 16);
+				int nSize = 0;
+				if (wc <= 0x007f)
+				{
+					cTemp[0] = (char)(wc & 0x007f);
+					nSize = 1;
+				}
+				else if (wc >= 0x0080 && wc <= 0x07ff)
+				{
+					cTemp[0] = (char)(((wc & 0x07c0) >> 6) | 0x00e0);
+					cTemp[1] = (char)((wc & 0x003f) | 0x0080);
+					nSize = 2;
+				}
+				else if (wc >= 0x0800)
+				{
+					cTemp[0] = (char)(((wc & 0xf000) >> 12) | 0x00e0);
+					cTemp[1] = (char)(((wc & 0x0fc0) >> 6) | 0x0080);
+					cTemp[2] = (char)((wc & 0x003f) | 0x0080);
+					nSize = 3;
+				}
+				memmove(lp + nSize, lp + 6, m_stringLen - (lp + 6 - m_value.m_string) + 1);
+				memcpy(lp, cTemp, nSize);
+				break;
+			}
+			default:
+				break;
+			}
+
+		}
+	}
+
 	std::string ToString()
 	{
 		return ToStringByFunc(
@@ -661,7 +733,6 @@ public:
 	}
 
 private:
-	friend class CPykJsonRead;
 #ifdef NO_SORT
 	typedef std::vector<std::pair<std::string, CPykJsonValue>> ObjectMap;
 #else
