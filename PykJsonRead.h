@@ -61,8 +61,7 @@ public:
 		value = ReadValue();
 		return true;
 	}
-
-private:
+protected:
 
 	bool InterParse(const char* pBegin, const char* pEnd, CPykJsonValueEx& value)
 	{
@@ -73,7 +72,7 @@ private:
 		return bRet;
 	}
 
-	json_encoding GetEncode(const char* pBegin, const char *pEnd, int& nOffset)
+	json_encoding GetEncode(const char* pBegin, const char* pEnd, int& nOffset)
 	{
 		switch (*pBegin)
 		{
@@ -187,7 +186,7 @@ private:
 		}
 		return value;
 	}
-	
+
 	CPykJsonValue ReadValue()
 	{
 		for (; m_pBegin < m_pEnd;)
@@ -197,64 +196,64 @@ private:
 				m_pBegin++;
 				continue;
 			}
-			switch (*m_pBegin)
-			{
-			case '\"':
-			{
-				m_pBegin++;
-				const char* pBegin = m_pBegin;
-				const char* pEnd = FindNextQuotes();
-				int nLen = (int)(pEnd - pBegin);
-				CPykJsonValue value(pBegin, pEnd);
-				value.ParseSelfString();
-				return value;
-			}
-			case '{':
-			{
-				return ReadMap();
-			}
-			case '[':
-			{
-				return ReadArray();
-			}
-			case '0':
-			case '1':
-			case '2':
-			case '3':
-			case '4':
-			case '5':
-			case '6':
-			case '7':
-			case '8':
-			case '9':
-			case '-':
-			{
-				return ReadNum();
-			}
-			case 'n':
-			{
-				assert(0 == strncmp(m_pBegin, "null", strlen("null")));
-				m_pBegin += strlen("null");
-				return CPykJsonValue();
-			}
-			case 't':
-			{
-				assert(0 == strncmp(m_pBegin, "true", strlen("true")));
-				m_pBegin += strlen("true");
-				return CPykJsonValue(true);
-			}
-			case 'f':
-			{
-				assert(0 == strncmp(m_pBegin, "false", strlen("false")));
-				m_pBegin += strlen("false");
-				return CPykJsonValue(false);
-			}
-			default:
-			{
-				assert(false);
-				return CPykJsonValue();
-			}
-			}
+			break;
+		}
+		switch (*m_pBegin)
+		{
+		case '\"':
+		{
+			m_pBegin++;
+			const char* pBegin = m_pBegin;
+			const char* pEnd = FindNextQuotes();
+			CPykJsonValue value(pBegin, pEnd);
+			value.ParseSelfString();
+			return value;
+		}
+		case '{':
+		{
+			return ReadMap();
+		}
+		case '[':
+		{
+			return ReadArray();
+		}
+		case '0':
+		case '1':
+		case '2':
+		case '3':
+		case '4':
+		case '5':
+		case '6':
+		case '7':
+		case '8':
+		case '9':
+		case '-':
+		{
+			return ReadNum();
+		}
+		case 'n':
+		{
+			assert(0 == strncmp(m_pBegin, "null", strlen("null")));
+			m_pBegin += strlen("null");
+			return CPykJsonValue();
+		}
+		case 't':
+		{
+			assert(0 == strncmp(m_pBegin, "true", strlen("true")));
+			m_pBegin += strlen("true");
+			return CPykJsonValue(true);
+		}
+		case 'f':
+		{
+			assert(0 == strncmp(m_pBegin, "false", strlen("false")));
+			m_pBegin += strlen("false");
+			return CPykJsonValue(false);
+		}
+		default:
+		{
+			assert(false);
+			return CPykJsonValue();
+		}
 		}
 		return CPykJsonValue();
 	}
@@ -293,7 +292,7 @@ private:
 							return CPykJsonValue((unsigned int)ull);
 						}
 					}
-					else if(0 == lHi)
+					else if (0 == lHi)
 					{
 						return CPykJsonValue((unsigned int)ull);
 					}

@@ -81,11 +81,12 @@ public:
 		m_ptrRoot = root;
 		this->m_pValue = now;
 	}
+#ifdef USE_C11
 	CPykSharePointer(T&& value)
 	{
 		this->operator=(std::forward<T>(value));
 	}
-#ifdef USE_C11
+
 	CPykSharePointer& operator =(T&& value)
 	{
 		Init(std::forward<T>(value));

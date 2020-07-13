@@ -247,7 +247,7 @@ public:
 				}
 			}
 			(*m_value.m_map).push_back(std::pair<std::string, CPykJsonValue>(pName, CPykJsonValue()));
-			return &(*m_value.m_map).back().second;
+			return GetTrueValue(&(*m_value.m_map).back().second);
 #else
 			return GetTrueValue(&(*m_value.m_map)[pName]);
 #endif // NO_SORT
@@ -269,7 +269,7 @@ public:
 				{
 					return NULL;
 				}
-				return &(*m_value.m_ver)[size + nNum];
+				return GetTrueValue(&(*m_value.m_ver)[size + nNum]);
 			}
 #endif
 			if ((size_t)nNum >= size)
@@ -369,7 +369,7 @@ public:
 		if (ValueType::arrayValue == m_type)
 		{
 			(*m_value.m_ver).push_back(value);
-			return &(*m_value.m_ver).back();
+			return GetTrueValue(&(*m_value.m_ver).back());
 		}
 		return nullptr;
 	}
@@ -385,7 +385,7 @@ public:
 		if (ValueType::arrayValue == m_type)
 		{
 			(*m_value.m_ver).push_back(std::forward<CPykJsonValue>(value));
-			return &(*m_value.m_ver).back();
+			return GetTrueValue(&(*m_value.m_ver).back());
 		}
 		return nullptr;
 	}
@@ -402,12 +402,12 @@ public:
 		if (ValueType::arrayValue == m_type)
 		{
 			(*m_value.m_ver).push_back(CPykJsonValue());
-			return &(*m_value.m_ver).back();
+			return GetTrueValue(&(*m_value.m_ver).back());
 		}
 		return nullptr;
 	}
 
-	bool AddKeyValue(std::string strKey, CPykJsonValue&& value)
+	bool AddKeyValue(std::string &&strKey, CPykJsonValue&& value)
 	{
 		assert(strKey.length());
 		if (ValueType::nullValue == m_type)
@@ -436,6 +436,11 @@ public:
 		}
 
 		return false;
+	}
+
+	bool AddKeyValue(const char* lpKey, CPykJsonValue&& value)
+	{
+		return AddKeyValue((std::string)lpKey, std::forward<CPykJsonValue>(value));
 	}
 
 	void Remove(const char* pStr, bool bAll = true)
@@ -547,7 +552,7 @@ public:
 		return "";
 	}
 
-	CPykJsonValue* GetMapValue(unsigned int nNum, std::string& strKey)
+	CPykJsonValue* GetMapValue(unsigned int nNum, const char* &lpKey)
 	{
 		if (ValueType::mapValue == m_type &&
 			m_value.m_map->size() > nNum)
@@ -557,7 +562,7 @@ public:
 			{
 				if (n == nNum)
 				{
-					strKey = it->first;
+					lpKey = it->first.c_str();
 					return GetTrueValue(&it->second);
 				}
 			}
@@ -637,98 +642,13 @@ public:
 			default:
 				break;
 			}
-
+			
 		}
 	}
 
-	std::string ToString()
+	CPykJsonValue* GetParent()
 	{
-		return ToStringByFunc(
-			[](ObjectMap *pMap) {
-			std::string str;
-			str += "{";
-
-			for (auto &i : *pMap)
-			{
-				str += "\"";
-				str += i.first;
-				str += "\":";
-				str += i.second.ToString();
-				str += ",";
-			}
-			str.pop_back();
-			str += "}";
-			return str;
-		},[](ObjectVec *pVec) {
-			std::string str;
-			str += "[";
-			for (auto &i : *pVec)
-			{
-				str += i.ToString();
-				str += ",";
-			}
-			str.pop_back();
-			str += "]";
-			return str;
-		}, [](CPykJsonValue* pValue) {
-			return pValue->ToString();
-		});
-	}
-	
-	std::string ToFormateString(unsigned int nDeep = 0)
-	{
-		return ToStringByFunc(
-			[nDeep](ObjectMap *pMap) {
-			std::string str;
-			str += "{";
-
-			for (auto &i : *pMap)
-			{
-				str += "\r\n";
-				for (size_t i = 0; i <= nDeep; i++)
-				{
-					str += "\t";
-				}
-
-				str += "\"";
-				str += i.first;
-				str += "\":";
-				str += i.second.ToFormateString(nDeep + 1);
-				str += ",";
-			}
-
-			str.pop_back();
-			str += "\r\n";
-			for (size_t i = 0; i < nDeep; i++)
-			{
-				str += "\t";
-			}
-			str += "}";
-			return str;
-		},[nDeep](ObjectVec *pVec) {
-			std::string str;
-			str += "[";
-			for (auto &i : *pVec)
-			{
-				str += "\r\n";
-				for (size_t i = 0; i <= nDeep; i++)
-				{
-					str += "\t";
-				}
-				str += i.ToFormateString(nDeep + 1);
-				str += ",";
-			}
-			str.pop_back();
-			str += "\r\n";
-			for (size_t i = 0; i < nDeep; i++)
-			{
-				str += "\t";
-			}
-			str += "]";
-			return str;
-		}, [nDeep](CPykJsonValue* pValue) {
-			return pValue->ToFormateString(nDeep);
-		});
+		return m_parent;
 	}
 
 private:
@@ -752,6 +672,7 @@ private:
 	} m_value = { 0 };
 
 	unsigned int m_stringLen = 0;
+	CPykJsonValue* m_parent = nullptr;
 
 	void InitByString(const char* pBegin, const char *pEnd = NULL)
 	{
@@ -853,104 +774,8 @@ private:
 		{
 			value = value->m_value.m_ref;
 		}
+		value->m_parent = this;
 		return value;
-	}
-
-	void AddBackslashAndChange(std::string &str, size_t &nFind, size_t &nCount, bool bChange, char cChange)
-	{
-		if (bChange)
-		{
-			str[nFind] = cChange;
-		}
-		
-		str.insert(nFind, 1, '\\');
-		nCount++;
-		nFind++;
-	}
-
-	std::string DealJsonString(std::string str)
-	{
-		size_t size = str.length();
-		
-		for (size_t i = 0; i < size; i++)
-		{
-			switch (str[i])
-			{
-			case '\\':
-			case '\"':
-			{
-				AddBackslashAndChange(str, i, size, false, '\0');
-				break;
-			}
-			case '\b':
-			{
-				AddBackslashAndChange(str, i, size, true, 'b');
-				break;
-			}
-			case '\n':
-			{
-				AddBackslashAndChange(str, i, size, true, 'n');
-				break;
-			}
-			case '\r':
-			{
-				AddBackslashAndChange(str, i, size, true, 'r');
-				break;
-			}
-			case '\t':
-			{
-				AddBackslashAndChange(str, i, size, true, 't');
-				break;
-			}
-			default:
-				break;
-			}
-		}
-		return std::move(str);
-	}
-
-	std::string ToStringByFunc(std::function<std::string(ObjectMap *pMap)> Fmap, std::function<std::string(ObjectVec *pVec)> Farr, std::function<std::string(CPykJsonValue * pValue)> FToString)
-	{
-		switch (m_type)
-		{
-		case ValueType::nullValue:
-			return "null";
-		case ValueType::intValue:
-			return std::to_string(m_value.m_int);
-		case ValueType::uintValue:
-			return std::to_string(m_value.m_uint);
-		case ValueType::realValue:
-			return std::to_string(m_value.m_real);
-		case ValueType::booleanValue:
-			return m_value.m_bool ? "true" : "false";
-		case ValueType::stringValue:
-		{
-			return "\"" + DealJsonString(m_value.m_string) + "\"";
-		}
-		case ValueType::mapValue:
-		{
-			if (0 == (*m_value.m_map).size())
-			{
-				return "{}";
-			}
-			return Fmap(m_value.m_map);
-		}
-		case ValueType::arrayValue:
-		{
-			if (0 == (*m_value.m_ver).size())
-			{
-				return "[]";
-			}
-			return Farr(m_value.m_ver);
-		}
-		case ValueType::refValue:
-		{
-			return FToString(m_value.m_ref);
-		}
-		default:
-			assert(false);
-		}
-		return "";
 	}
 
 	int unicode_to_utf8(unsigned long unic, char* pOutput, int outSize)

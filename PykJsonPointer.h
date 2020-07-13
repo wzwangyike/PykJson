@@ -47,12 +47,12 @@ public:
 	}
 	bool operator ==(const CPykJsonPointer& value) const
 	{
-		if (this->m_ptrRoot == value.m_ptrRoot &&
-			this->m_pValue == value.m_pValue)
+		if (this->m_pValue &&
+			value.m_pValue)
 		{
-			return true;
+			return *this->m_pValue == *value.m_pValue;
 		}
-		return false;
+		return this->m_pValue == value.m_pValue;
 	}
 
 	//map 对象获取数据，在没有匹配时返回匿名对象
@@ -76,19 +76,19 @@ public:
 		return this->m_pValue ? this->m_pValue->Size() : 0;
 	}
 	//数组添加数据
-	CPykJsonPointer Append(const CPykJsonPointer &value)
+	CPykJsonPointer Append(const CPykJsonPointer& value)
 	{
 		this->Init();
 		return { this->m_ptrRoot, this->m_pValue->Append(value.m_pValue ? *(value.m_pValue) : T()) };
 	}
 #ifdef USE_C11
-	CPykJsonPointer Append(CPykJsonPointer &&value)
+	CPykJsonPointer Append(CPykJsonPointer&& value)
 	{
 		this->Init();
 		return { this->m_ptrRoot, this->m_pValue->Append(value.m_pValue ? std::move(*(value.m_pValue)) : T()) };
 	}
 
-	CPykJsonPointer Append(T &&value)
+	CPykJsonPointer Append(T&& value)
 	{
 		this->Init();
 		return { this->m_ptrRoot, this->m_pValue->Append(std::forward<T>(value)) };
@@ -100,13 +100,13 @@ public:
 		return { this->m_ptrRoot, this->m_pValue->AppendNew() };
 	}
 	//数组和对象删除数据
-	REMOVE(const char *)
+	REMOVE(const char*)
 #ifdef SupportWideChar
 	REMOVE(const wchar_t*)
 #endif
 	REMOVE(T)
-	//数组和对象删除数据
-	void Remove(const CPykJsonPointer &Value)
+		//数组和对象删除数据
+	void Remove(const CPykJsonPointer& Value)
 	{
 		if (this->m_pValue && Value.m_pValue)
 		{
@@ -122,7 +122,7 @@ public:
 		}
 	}
 
-	CPykJsonPointer Find(const T &value)
+	CPykJsonPointer Find(const T& value)
 	{
 		if (!this->m_pValue)
 		{
@@ -131,7 +131,7 @@ public:
 		return { this->m_ptrRoot, this->m_pValue->Find(value) };
 	}
 
-	CPykJsonPointer Find(const CPykJsonPointer &value)
+	CPykJsonPointer Find(const CPykJsonPointer& value)
 	{
 		if (!this->m_pValue)
 		{
@@ -158,33 +158,28 @@ public:
 		return "";
 	}
 
-	CPykJsonPointer GetMapValue(unsigned int nNum, std::string& strKey)
+	CPykJsonPointer GetMapValue(unsigned int nNum, const char*& lpKey)
 	{
 		if (!this->m_pValue)
 		{
 			return CPykJsonPointer();
 		}
-		return { this->m_ptrRoot, this->m_pValue->GetMapValue(nNum, strKey)};
+		return { this->m_ptrRoot, this->m_pValue->GetMapValue(nNum, lpKey) };
 	}
 
 	unsigned int GetStringLen()
 	{
 		return this->m_pValue ? this->m_pValue->GetStringLen() : 0;
 	}
-	
+
 	T* GetJsonPoint()
 	{
 		return this->m_pValue;
 	}
 
-	std::string ToString(std::string def = "null")
+	CPykJsonPointer GetParent()
 	{
-		return this->m_pValue ? this->m_pValue->ToString() : def;
-	}
-
-	std::string ToFormateString(std::string def = "null")
-	{
-		return this->m_pValue ? this->m_pValue->ToFormateString() : def;
+		return { this->m_ptrRoot, this->m_pValue->GetParent() };
 	}
 
 	JsonIterator begin()
@@ -240,7 +235,7 @@ public:
 		}
 		return false;
 	}
-	
+
 	bool operator!=(const CpykJsonIterator<T>& rhs) const
 	{
 		return !(*this == rhs);
@@ -256,18 +251,18 @@ public:
 		}
 		case ValueType::mapValue:
 		{
-			std::string strKey;
-			CPykJsonPointer<T> value = m_Root.GetMapValue(m_nIndex, strKey);
+			const char* lpKey = nullptr;
+			CPykJsonPointer<T> value = m_Root.GetMapValue(m_nIndex, lpKey);
 
 			CPykJsonPointer<T> t;
-			t[strKey.c_str()] = value.GetJsonPoint();
+			t[lpKey] = value.GetJsonPoint();
 			return t;
 		}
 		}
-		
+
 		return m_Root;
 	}
-	
+
 	CPykJsonPointer<T>* operator->()
 	{
 		switch (m_Root.GetType())
@@ -290,9 +285,9 @@ public:
 		return &m_Root;
 	}
 
-	CPykJsonPointer<T> GetKeyValue(std::string &strKey)
+	CPykJsonPointer<T> GetKeyValue(const char*& lpKey)
 	{
-		return m_Root.GetMapValue(m_nIndex, strKey);
+		return m_Root.GetMapValue(m_nIndex, lpKey);
 	}
 
 	const CpykJsonIterator<T>& operator++()
@@ -300,7 +295,7 @@ public:
 		++m_nIndex;
 		return *this;
 	}
-	
+
 	CpykJsonIterator<T> operator++(int)
 	{
 		CpykJsonIterator<T> temp = { m_nIndex++, m_Root };
@@ -312,7 +307,7 @@ public:
 		--m_nIndex;
 		return *this;
 	}
-	
+
 	CpykJsonIterator<T> operator--(int)
 	{
 		CpykJsonIterator<T> temp = { m_nIndex--, m_Root };
