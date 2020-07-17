@@ -199,6 +199,12 @@ public:
 		return false;
 	}
 
+	//比较函数
+	bool operator !=(const CPykJsonValue& value)
+	{
+		return !operator==(value);
+	}
+
 	//map 对象获取数据
 	CPykJsonValue* operator ()(const char *pName)
 	{

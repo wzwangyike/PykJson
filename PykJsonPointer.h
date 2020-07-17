@@ -55,6 +55,16 @@ public:
 		return this->m_pValue == value.m_pValue;
 	}
 
+	bool operator !=(const CPykJsonPointer& value) const
+	{
+		if (this->m_pValue &&
+			value.m_pValue)
+		{
+			return *this->m_pValue != *value.m_pValue;
+		}
+		return this->m_pValue != value.m_pValue;
+	}
+
 	//map 对象获取数据，在没有匹配时返回匿名对象
 	FUCCALLORG(operator (), const char*)
 
@@ -179,6 +189,10 @@ public:
 
 	CPykJsonPointer GetParent()
 	{
+		if (!this->m_pValue)
+		{
+			return CPykJsonPointer();
+		}
 		return { this->m_ptrRoot, this->m_pValue->GetParent() };
 	}
 
