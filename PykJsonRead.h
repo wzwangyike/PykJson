@@ -67,8 +67,7 @@ protected:
 	{
 		CPykJsonValue* p = new CPykJsonValue;
 		bool bRet = parse(pBegin, pEnd, *p);
-		CPykJsonValueEx valueTemp(std::shared_ptr<CPykJsonValue>(p), p);
-		value = valueTemp;
+		value = CPykJsonValueEx(std::shared_ptr<CPykJsonValue>(p), p);
 		return bRet;
 	}
 

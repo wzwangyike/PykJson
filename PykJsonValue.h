@@ -11,7 +11,7 @@
 #ifdef SupportWideChar
 #include "PykMgr.h"
 #endif
-
+#include <ostream>
 enum class ValueType
 {
 	nullValue = 0, ///< 'null' value
@@ -93,12 +93,12 @@ public:
 		}
 	}
 
-	CPykJsonValue(const CPykJsonValue &value) : CPykJsonValue()
+	CPykJsonValue(const CPykJsonValue& value) : CPykJsonValue()
 	{
 		*this = value;
 	}
 
-	CPykJsonValue(CPykJsonValue &&value) : CPykJsonValue() 
+	CPykJsonValue(CPykJsonValue&& value) : CPykJsonValue()
 	{
 		m_type = value.m_type;
 		m_stringLen = value.m_stringLen;
@@ -108,23 +108,23 @@ public:
 		memset(&value.m_value, 0, sizeof(ValueHolder));
 	}
 
-	CPykJsonValue(const char *pBegin, const char *pEnd = NULL)
+	CPykJsonValue(const char* pBegin, const char* pEnd = NULL)
 	{
 		InitByString(pBegin, pEnd);
 	}
 
-	CPykJsonValue(CPykJsonValue *value)
+	CPykJsonValue(CPykJsonValue* value)
 	{
 		m_type = ValueType::refValue;
 		m_value.m_ref = value;
 	}
 
-	CPykJsonValue(const std::string &str) : CPykJsonValue(str.c_str(), str.c_str() + str.length())
+	CPykJsonValue(const std::string& str) : CPykJsonValue(str.c_str(), str.c_str() + str.length())
 	{
 
 	}
 #ifdef SupportWideChar
-	CPykJsonValue(const wchar_t *pWchar) : CPykJsonValue((const char *)CPykMgrTemplate<CP_UTF8>(pWchar))
+	CPykJsonValue(const wchar_t* pWchar) : CPykJsonValue((const char*)CPykMgrTemplate<CP_UTF8>(pWchar))
 	{
 
 	}
@@ -164,7 +164,7 @@ public:
 		return ReturnBool();
 	}
 
-	operator const char *() const
+	operator const char* () const
 	{
 		if (ValueType::stringValue == m_type)
 		{
@@ -173,13 +173,121 @@ public:
 		return "";
 	}
 
+	friend std::ostream& operator <<(std::ostream& out, const CPykJsonValue& value)
+	{
+		switch (value.m_type)
+		{
+		case ValueType::nullValue:
+		{
+			out << "null";
+			break;
+		}
+		case ValueType::intValue:
+		{
+			out << value.m_value.m_int;
+			break;
+		}
+		case ValueType::uintValue:
+		{
+			out << value.m_value.m_uint;
+			break;
+		}
+		case ValueType::realValue:
+		{
+			out << value.m_value.m_real;
+			break;
+		}
+		case ValueType::booleanValue:
+		{
+			out << value.m_value.m_bool;
+			break;
+		}
+		case ValueType::stringValue:
+		{
+			out << "\"";
+			const char* pStr = value.m_value.m_string;
+			while (*pStr != '\0')
+			{
+				switch (*pStr)
+				{
+				case '\\':
+				case '\"':
+				{
+					out << '\\' << *pStr;
+					break;
+				}
+				case '\b':
+				{
+					out << "\\b";
+					break;
+				}
+				case '\n':
+				{
+					out << "\\n";
+					break;
+				}
+				case '\r':
+				{
+					out << "\\r";
+					break;
+				}
+				case '\t':
+				{
+					out << "\\t";
+					break;
+				}
+				default:
+					out << *pStr;
+					break;
+				}
+				pStr++;
+			}
+			out << "\"";
+			break;
+		}
+		case ValueType::mapValue:
+		{
+			out << "{";
+			for (auto it = value.m_value.m_map->begin(); it != value.m_value.m_map->end(); )
+			{
+				out << "\"" << it->first << "\":" << it->second;
+				it++;
+				if (it != value.m_value.m_map->end())
+				{
+					out << ",";
+				}
+			}
+			out << "}";
+			break;
+		}
+		case ValueType::arrayValue:
+		{
+			out << "[";
+			for (auto it = value.m_value.m_ver->begin(); it != value.m_value.m_ver->end(); )
+			{
+				out << *it;
+				it++;
+				if (it != value.m_value.m_ver->end())
+				{
+					out << ",";
+				}
+			}
+			out << "]";
+			break;
+		}
+		default:
+			break;
+		}
+		return out;
+	}
+
 	//比较函数
-	bool operator ==(const CPykJsonValue & value)
+	bool operator ==(const CPykJsonValue& value)
 	{
 		if (m_type == value.m_type)
 		{
 			if (ValueType::stringValue == m_type &&
-				0== strcmp(m_value.m_string, value.m_value.m_string))
+				0 == strcmp(m_value.m_string, value.m_value.m_string))
 			{
 				return true;
 			}
@@ -206,34 +314,34 @@ public:
 	}
 
 	//map 对象获取数据
-	CPykJsonValue* operator ()(const char *pName)
+	CPykJsonValue* operator ()(const char* pName)
 	{
 		assert(pName);
 		if (ValueType::mapValue == m_type)
 		{
 #ifdef NO_SORT
 			auto it = (*m_value.m_map).begin();
-			for (;it != (*m_value.m_map).end(); it++)
+			for (; it != (*m_value.m_map).end(); it++)
 			{
 				if (0 == it->first.compare(pName))
 				{
 					break;
 				}
-			}
+	}
 #else
 			auto it = (*m_value.m_map).find(pName);
 #endif // NO_SORT
-			
+
 			if ((*m_value.m_map).end() != it)
 			{
 				return GetTrueValue(&(it->second));
 			}
-		}
+}
 		return nullptr;
 	}
 
 	//map 对象获取数据，在没有匹配时返回新增数据
-	CPykJsonValue* operator [](const char *pName)
+	CPykJsonValue* operator [](const char* pName)
 	{
 		assert(pName);
 		if (ValueType::nullValue == m_type)
@@ -257,8 +365,8 @@ public:
 #else
 			return GetTrueValue(&(*m_value.m_map)[pName]);
 #endif // NO_SORT
-		}
-		
+	}
+
 		return nullptr;
 	}
 
@@ -276,18 +384,18 @@ public:
 					return NULL;
 				}
 				return GetTrueValue(&(*m_value.m_ver)[size + nNum]);
-			}
+		}
 #endif
 			if ((size_t)nNum >= size)
 				return NULL;
 
 			return GetTrueValue(&(*m_value.m_ver)[nNum]);
-		}
+	}
 
 		return nullptr;
 	}
 	//复制构造函数
-	CPykJsonValue& operator =(const CPykJsonValue & value)
+	CPykJsonValue& operator =(const CPykJsonValue& value)
 	{
 		Reset();
 		m_type = value.m_type;
@@ -310,7 +418,7 @@ public:
 		return *this;
 	}
 	//移动构造函数
-	CPykJsonValue& operator =(CPykJsonValue && value)
+	CPykJsonValue& operator =(CPykJsonValue&& value)
 	{
 		Reset();
 		m_type = value.m_type;
@@ -364,7 +472,7 @@ public:
 		return 0;
 	}
 	//数组添加数据
-	CPykJsonValue* Append(const CPykJsonValue &value)
+	CPykJsonValue* Append(const CPykJsonValue& value)
 	{
 		if (ValueType::nullValue == m_type)
 		{
@@ -380,7 +488,7 @@ public:
 		return nullptr;
 	}
 	//数据添加可移动数据
-	CPykJsonValue* Append(CPykJsonValue&&value)
+	CPykJsonValue* Append(CPykJsonValue&& value)
 	{
 		if (ValueType::nullValue == m_type)
 		{
@@ -413,7 +521,7 @@ public:
 		return nullptr;
 	}
 
-	bool AddKeyValue(std::string &&strKey, CPykJsonValue&& value)
+	bool AddKeyValue(std::string&& strKey, CPykJsonValue&& value)
 	{
 		assert(strKey.length());
 		if (ValueType::nullValue == m_type)
@@ -439,7 +547,7 @@ public:
 			(*m_value.m_map)[std::forward<std::string>(strKey)] = std::forward<CPykJsonValue>(value);
 			return true;
 #endif // NO_SORT
-		}
+	}
 
 		return false;
 	}
@@ -461,7 +569,7 @@ public:
 					(*m_value.m_map).erase(it);
 					return;
 				}
-			}
+	}
 #else
 			(*m_value.m_map).erase(pStr);
 #endif // NO_SORT
@@ -474,7 +582,7 @@ public:
 #ifdef SupportWideChar
 	void Remove(const wchar_t* pStr, bool bAll = true)
 	{
-		Remove((const char *)CPykMgrTemplate<CP_UTF8>(pStr), bAll);
+		Remove((const char*)CPykMgrTemplate<CP_UTF8>(pStr), bAll);
 	}
 #endif
 	void Remove(const CPykJsonValue& value, bool bAll = true)
@@ -508,7 +616,7 @@ public:
 			if (nNum < 0)
 			{
 				nNum == size + nNum;
-			}
+		}
 #endif
 			if (size <= (size_t)nNum)
 			{
@@ -523,11 +631,11 @@ public:
 					return;
 				}
 			}
-		}
+	}
 	}
 
 	//数组查找
-	CPykJsonValue* Find(const CPykJsonValue &value)
+	CPykJsonValue* Find(const CPykJsonValue& value)
 	{
 		if (ValueType::arrayValue == m_type)
 		{
@@ -558,7 +666,7 @@ public:
 		return "";
 	}
 
-	CPykJsonValue* GetMapValue(unsigned int nNum, const char* &lpKey)
+	CPykJsonValue* GetMapValue(unsigned int nNum, const char*& lpKey)
 	{
 		if (ValueType::mapValue == m_type &&
 			m_value.m_map->size() > nNum)
@@ -648,7 +756,7 @@ public:
 			default:
 				break;
 			}
-			
+
 		}
 	}
 
@@ -671,16 +779,16 @@ private:
 		unsigned int m_uint;
 		double m_real;
 		bool m_bool;
-		char *m_string;
-		ObjectMap *m_map;
-		ObjectVec *m_ver;
+		char* m_string;
+		ObjectMap* m_map;
+		ObjectVec* m_ver;
 		CPykJsonValue* m_ref;
 	} m_value = { 0 };
 
 	unsigned int m_stringLen = 0;
 	CPykJsonValue* m_parent = nullptr;
 
-	void InitByString(const char* pBegin, const char *pEnd = NULL)
+	void InitByString(const char* pBegin, const char* pEnd = NULL)
 	{
 		if (!pBegin)
 		{
@@ -700,7 +808,7 @@ private:
 			{
 				m_stringLen = (unsigned int)(pEnd - pBegin);
 			}
-			
+
 			m_value.m_string = new char[m_stringLen + 1];
 			memset(m_value.m_string, 0, m_stringLen + 1);
 			memcpy(m_value.m_string, pBegin, m_stringLen);

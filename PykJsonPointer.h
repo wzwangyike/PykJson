@@ -40,6 +40,17 @@ public:
 	TRANSFORM(bool, 0)
 	TRANSFORM(const char*, "")
 
+	friend std::ostream& operator <<(std::ostream& out, const CPykJsonPointer<T>& value)
+	{
+		if (value.m_pValue)
+		{
+			return out << *(value.m_pValue);
+		}
+		else
+		{
+			return out << "null";
+		}
+	}
 	template <class L>
 	bool operator ==(L value) const
 	{

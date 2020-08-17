@@ -6,12 +6,20 @@ public:
 	{
 		for (CPykJsonValueEx way : howGet)
 		{
-			const char* pWay = way["GetWay"];
-			if (0 == _stricmp(pWay, "Key"))
+			switch (way.GetType())
 			{
-				jsonFind.Reset(jsonFind[(const char*)way["Key"]]);
+			case ValueType::stringValue:
+			{
+				jsonFind.Reset(jsonFind[(const char*)way]);
+				break;
 			}
-			else if (0 == _stricmp(pWay, "Array"))
+			case ValueType::intValue:
+			case ValueType::uintValue:
+			{
+				jsonFind.Reset(jsonFind[(int)way]);
+				break;
+			}
+			case ValueType::mapValue:
 			{
 				if (way["Key"])
 				{
@@ -25,11 +33,6 @@ public:
 							break;
 						}
 					}
-				}
-				else if (way["Pos"])
-				{
-					unsigned int nPos = way["Pos"];
-					jsonFind.Reset(jsonFind[nPos]);
 				}
 				else if (way["Find"])
 				{
@@ -68,6 +71,10 @@ public:
 						}
 					}
 				}
+				break;
+			}
+			default:
+				return jsonFind;
 			}
 			if (!jsonFind)
 			{
