@@ -67,48 +67,32 @@ protected:
 	{
 		CPykJsonValue* p = new CPykJsonValue;
 		bool bRet = parse(pBegin, pEnd, *p);
-		value = CPykJsonValueEx(std::shared_ptr<CPykJsonValue>(p), p);
+		CPykJsonValueEx valueTemp(std::shared_ptr<CPykJsonValue>(p), p);
+		value = valueTemp;
 		return bRet;
 	}
 
 	json_encoding GetEncode(const char* pBegin, const char* pEnd, int& nOffset)
 	{
-		switch (*pBegin)
+		unsigned char pUtf[4] = { 0xEF, 0xBB, 0xBF, 0x0 };
+		unsigned char pUniLe[3] = { 0xFF, 0xFE, 0x0 };
+		unsigned char pUniBe[3] = { 0xFE, 0xFF, 0x0 };
+		if (0 == memcmp(pBegin, pUtf, 3))
 		{
-		case 0xEF:
+			nOffset = 3;
+			return json_encoding::encoding_utf8;
+		}
+		else if (0 == memcmp(pBegin, pUniLe, 2))
 		{
-			if (3 <= pEnd - pBegin &&
-				0xBB == *(pBegin + 1) &&
-				0xBF == *(pBegin + 1))
-			{
-				nOffset = 3;
-				return json_encoding::encoding_utf8;
-			}
-			break;
+			nOffset = 2;
+			return json_encoding::encoding_utf16le;
 		}
-		case 0xFF:
+		else if (0 == memcmp(pBegin, pUniBe, 2))
 		{
-			if (2 <= pEnd - pBegin &&
-				0xFE == *(pBegin + 1))
-			{
-				nOffset = 2;
-				return json_encoding::encoding_utf16le;
-			}
-			break;
+			nOffset = 2;
+			return json_encoding::encoding_utf16be;
 		}
-		case 0xFE:
-		{
-			if (2 <= pEnd - pBegin &&
-				0xFF == *(pBegin + 1))
-			{
-				nOffset = 2;
-				return json_encoding::encoding_utf16be;
-			}
-			break;
-		}
-		default:
-			break;
-		}
+
 		nOffset = 0;
 		return json_encoding::encoding_utf8;
 	}
