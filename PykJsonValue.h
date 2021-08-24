@@ -1006,7 +1006,7 @@ T ReturnNum(T def = 0) const
 	return def;
 }
 
-bool ReturnBool(bool def = 0) const
+bool ReturnBool() const
 {
 	if (ValueType::nullValue == m_type)
 	{
@@ -1018,11 +1018,11 @@ bool ReturnBool(bool def = 0) const
 	}
 	if (ValueType::uintValue == m_type)
 	{
-		return m_value.m_uint;
+		return (bool)m_value.m_uint;
 	}
 	if (ValueType::intValue == m_type)
 	{
-		return m_value.m_int;
+		return (bool)m_value.m_int;
 	}
 	return true;
 }

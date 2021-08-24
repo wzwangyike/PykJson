@@ -118,7 +118,6 @@ public:
 	FUCCALLORG(operator [], const char*);
 
 	//获取数组数据
-	FUCCALLORG(operator [], int);
 	FUCCALLORG(operator [], size_t);
 
 	//获取josn类型

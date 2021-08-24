@@ -16,7 +16,7 @@ public:
 			case ValueType::intValue:
 			case ValueType::uintValue:
 			{
-				jsonFind.Reset(jsonFind[(size_t)way]);
+				jsonFind.Reset(jsonFind[(unsigned int)way]);
 				break;
 			}
 			case ValueType::mapValue:
