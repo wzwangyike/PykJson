@@ -16,7 +16,7 @@ public:
 			case ValueType::intValue:
 			case ValueType::uintValue:
 			{
-				jsonFind.Reset(jsonFind[(int)way]);
+				jsonFind.Reset(jsonFind[(size_t)way]);
 				break;
 			}
 			case ValueType::mapValue:
@@ -84,7 +84,7 @@ public:
 		return jsonFind;
 	}
 
-	static CPykJsonValueEx ReadJsonFile(const char* lpFilePath)
+	static CPykJsonValueEx ReadJsonFile(const char* lpFilePath, void (*pBufferDecode)(unsigned char*pBuffer, size_t size) = NULL)
 	{
 		FILE* fp = NULL;
 #ifdef _WIN32
@@ -106,6 +106,10 @@ public:
 			return CPykJsonValueEx();
 		}
 		fclose(fp);
+		if (pBufferDecode)
+		{
+			pBufferDecode((unsigned char *)p.get(), size);
+		}
 		CPykJsonRead read;
 		CPykJsonValueEx value;
 		if (!read.parse(p.get(), p.get() + size, value))

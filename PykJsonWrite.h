@@ -1,6 +1,6 @@
 #pragma once
 #include "PykJsonValue.h"
-
+#include <functional>
 class CPykJsonWrite
 {
 public:

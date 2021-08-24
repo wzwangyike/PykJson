@@ -5,7 +5,7 @@
 #include <type_traits>
 
 template <class T>
-class CpykJsonIterator;
+class CpykJsonIteratorEx;
 
 template <class T>
 class CPykJsonPointer : public CPykSharePointer<T>
@@ -22,25 +22,36 @@ class CPykJsonPointer : public CPykSharePointer<T>
 	}
 
 #define REMOVE(type) \
-	void Remove(type value, bool bAll = true){\
-	if (this->m_pValue)\
-		this->m_pValue->Remove(value, bAll);\
+	bool Remove(type value, CPykJsonPointer *pRemoved = NULL, bool bAll = true) { \
+	if (this->m_pValue) \
+	{\
+		if (pRemoved) \
+			pRemoved->Init(); \
+		return this->m_pValue->Remove(value, pRemoved ? pRemoved->m_pValue : NULL, bAll); \
+	}\
+	return false;\
 	}
+
+#define GET(ret, funcName, def)\
+	ret funcName(){\
+		return this->m_pValue ? this->m_pValue->funcName() : def;\
+	}
+
 public:
-	typedef CpykJsonIterator<T> JsonIterator;
+	typedef CpykJsonIteratorEx<T> JsonIterator;
 
 	using CPykSharePointer<T>::CPykSharePointer;
 	using CPykSharePointer<T>::operator=;
 
 	TRANSFORM(int, 0)
-	TRANSFORM(unsigned int, 0)
-	TRANSFORM(long, 0)
-	TRANSFORM(unsigned long, 0)
-	TRANSFORM(double, 0)
-	TRANSFORM(bool, 0)
-	TRANSFORM(const char*, "")
+		TRANSFORM(unsigned int, 0)
+		TRANSFORM(long, 0)
+		TRANSFORM(unsigned long, 0)
+		TRANSFORM(double, 0)
+		TRANSFORM(bool, 0)
+		TRANSFORM(const char*, "")
 
-	friend std::ostream& operator <<(std::ostream& out, const CPykJsonPointer<T>& value)
+		friend std::ostream& operator <<(std::ostream& out, const CPykJsonPointer<T>& value)
 	{
 		if (value.m_pValue)
 		{
@@ -51,6 +62,30 @@ public:
 			return out << "null";
 		}
 	}
+
+	int operator++()
+	{
+		if (this->m_pValue)
+		{
+			return this->m_pValue->operator++();
+		}
+		else
+		{
+			return 0;
+		}
+	}
+	int operator++(int n)
+	{
+		if (this->m_pValue)
+		{
+			return this->m_pValue->operator++(0);
+		}
+		else
+		{
+			return 0;
+		}
+	}
+	//比较函数
 	template <class L>
 	bool operator ==(L value) const
 	{
@@ -77,25 +112,24 @@ public:
 	}
 
 	//map 对象获取数据，在没有匹配时返回匿名对象
-	FUCCALLORG(operator (), const char*)
+	FUCCALLORG(operator (), const char*);
 
 	//map 对象获取数据，在没有匹配时返回新增数据
-	FUCCALLORG(operator [], const char*)
+	FUCCALLORG(operator [], const char*);
 
 	//获取数组数据
-	FUCCALLORG(operator [], int)
+	FUCCALLORG(operator [], int);
+	FUCCALLORG(operator [], size_t);
 
 	//获取josn类型
-	ValueType GetType()
-	{
-		return this->m_pValue ? this->m_pValue->GetType() : ValueType::nullValue;
-	}
+	GET(ValueType, GetType, ValueType::nullValue);
 
 	//获取数组和对象的大小
-	size_t Size()
-	{
-		return this->m_pValue ? this->m_pValue->Size() : 0;
-	}
+	GET(size_t, Size, 0);
+
+	//获取字符串长度
+	GET(unsigned int, GetStringLen, 0);
+
 	//数组添加数据
 	CPykJsonPointer Append(const CPykJsonPointer& value)
 	{
@@ -121,13 +155,16 @@ public:
 		return { this->m_ptrRoot, this->m_pValue->AppendNew() };
 	}
 	//数组和对象删除数据
-	REMOVE(const char*)
+	REMOVE(const char*);
 #ifdef SupportWideChar
-	REMOVE(const wchar_t*)
+	REMOVE(const wchar_t*);
 #endif
-	REMOVE(T)
-		//数组和对象删除数据
-	void Remove(const CPykJsonPointer& Value)
+	bool Remove(T value, bool bAll = true)
+	{
+		if (this->m_pValue)
+			this->m_pValue->Remove(value, bAll);
+	}
+	bool Remove(const CPykJsonPointer& Value)
 	{
 		if (this->m_pValue && Value.m_pValue)
 		{
@@ -135,12 +172,15 @@ public:
 		}
 	}
 	//数组根据位置删除数据
-	void RemoveItemByIndex(int nNum)
+	bool RemoveItemByIndex(size_t nNum, CPykJsonPointer* pRemoved = NULL)
 	{
 		if (this->m_pValue)
 		{
-			this->m_pValue->RemoveItemByIndex(nNum);
+			if (pRemoved)
+				pRemoved->Init();
+			return this->m_pValue->RemoveItemByIndex(nNum, pRemoved ? pRemoved->m_pValue : NULL);
 		}
+		return false;
 	}
 
 	CPykJsonPointer Find(const T& value)
@@ -179,18 +219,13 @@ public:
 		return "";
 	}
 
-	CPykJsonPointer GetMapValue(unsigned int nNum, const char*& lpKey)
+	CPykJsonPointer GetMapValue(size_t nNum, const char*& lpKey)
 	{
 		if (!this->m_pValue)
 		{
 			return CPykJsonPointer();
 		}
 		return { this->m_ptrRoot, this->m_pValue->GetMapValue(nNum, lpKey) };
-	}
-
-	unsigned int GetStringLen()
-	{
-		return this->m_pValue ? this->m_pValue->GetStringLen() : 0;
 	}
 
 	T* GetJsonPoint()
@@ -225,117 +260,83 @@ public:
 	}
 };
 
+class CpykJsonIterator;
+
 template <class T>
-class CpykJsonIterator
+class CpykJsonIteratorEx
 {
 private:
-	int m_nIndex = 0;
-	CPykJsonPointer<T> m_Root;
+	CpykJsonIterator m_Orgit;
 	CPykJsonPointer<T> m_Temp;
 public:
 	// Default constructor
-	CpykJsonIterator()
+	CpykJsonIteratorEx()
 	{
 
 	}
-	CpykJsonIterator(int nIndex, const CPykJsonPointer<T>& node)
+	CpykJsonIteratorEx(size_t nIndex, CPykJsonPointer<T>& node) : m_Orgit(nIndex, node.GetJsonPoint())
 	{
-		m_nIndex = nIndex;
-		m_Root.Reset(node);
 	}
 	// Construct an iterator which points to the specified node
-	CpykJsonIterator(const CpykJsonIterator<T>& node)
+	CpykJsonIteratorEx(const CpykJsonIteratorEx<T>& node) : m_Orgit(node.m_Orgit)
 	{
-		m_nIndex = node.m_nIndex;
-		m_Root.Reset(node.m_Root);
+	}
+	CpykJsonIteratorEx(const CpykJsonIterator& node) : m_Orgit(node)
+	{
 	}
 
 	// Iterator operators
-	bool operator==(const CpykJsonIterator<T>& rhs) const
+	bool operator==(const CpykJsonIteratorEx<T>& rhs) const
 	{
-		if (m_Root == rhs.m_Root &&
-			m_nIndex == rhs.m_nIndex)
-		{
-			return true;
-		}
-		return false;
+		return m_Orgit == rhs.m_Orgit;
 	}
 
-	bool operator!=(const CpykJsonIterator<T>& rhs) const
+	bool operator!=(const CpykJsonIteratorEx<T>& rhs) const
 	{
 		return !(*this == rhs);
 	}
 
 	CPykJsonPointer<T> operator*()
 	{
-		switch (m_Root.GetType())
-		{
-		case ValueType::arrayValue:
-		{
-			return m_Root[m_nIndex];
-		}
-		case ValueType::mapValue:
-		{
-			const char* lpKey = nullptr;
-			CPykJsonPointer<T> value = m_Root.GetMapValue(m_nIndex, lpKey);
-
-			CPykJsonPointer<T> t;
-			t[lpKey] = value.GetJsonPoint();
-			return t;
-		}
-		}
-
-		return m_Root;
+		return { NULL, &*m_Orgit };
 	}
 
 	CPykJsonPointer<T>* operator->()
 	{
-		switch (m_Root.GetType())
-		{
-		case ValueType::arrayValue:
-		{
-			m_Temp.Reset(m_Root[m_nIndex]);
-			return &m_Temp;
-		}
-		case ValueType::mapValue:
-		{
-			std::string strKey;
-			CPykJsonPointer<T> value = m_Root.GetMapValue(m_nIndex, strKey);
-			CPykJsonPointer<T> t;
-			t[strKey.c_str()] = value.GetJsonPoint();
-			m_Temp.Reset(t);
-			return &m_Temp;
-		}
-		}
-		return &m_Root;
+		m_Temp.Reset({ NULL, &*m_Orgit });
+		return &m_Temp;
 	}
 
 	CPykJsonPointer<T> GetKeyValue(const char*& lpKey)
 	{
-		return m_Root.GetMapValue(m_nIndex, lpKey);
+		m_Temp.Reset({ NULL, m_Orgit.GetKeyValue(lpKey) });
+		return m_Temp;
 	}
 
-	const CpykJsonIterator<T>& operator++()
+	const CpykJsonIteratorEx<T>& operator++()
 	{
-		++m_nIndex;
+		++m_Orgit;
 		return *this;
 	}
 
-	CpykJsonIterator<T> operator++(int)
+	CpykJsonIteratorEx<T> operator++(int)
 	{
-		CpykJsonIterator<T> temp = { m_nIndex++, m_Root };
-		return temp;
+		return m_Orgit++;
 	}
 
-	const CpykJsonIterator<T>& operator--()
+	const CpykJsonIteratorEx<T>& operator--()
 	{
-		--m_nIndex;
+		--m_Orgit;
 		return *this;
 	}
 
-	CpykJsonIterator<T> operator--(int)
+	CpykJsonIteratorEx<T> operator--(int)
 	{
-		CpykJsonIterator<T> temp = { m_nIndex--, m_Root };
-		return temp;
+		return m_Orgit--;
+	}
+
+	void DeleteSelf()
+	{
+		m_Orgit.DeleteSelf();
 	}
 };
