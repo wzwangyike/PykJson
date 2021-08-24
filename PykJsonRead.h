@@ -232,6 +232,10 @@ protected:
 			m_pBegin += strlen("false");
 			return CPykJsonValue(false);
 		}
+		case '\0':
+		{
+			return CPykJsonValue();
+		}
 		default:
 		{
 			assert(false);
