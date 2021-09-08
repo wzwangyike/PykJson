@@ -24,8 +24,6 @@ enum class ValueType
 	refValue		///< xref value (not own)
 };
 
-#include "PykJsonPointer.h"
-
 class CPykJsonValue
 {
 public:
@@ -1170,7 +1168,7 @@ public:
 		return false;
 	}
 
-	bool operator!=(const CpykJsonIterator&rhs) const
+	bool operator!=(const CpykJsonIterator& rhs) const
 	{
 		return !(*this == rhs);
 	}
@@ -1286,7 +1284,7 @@ public:
 		CpykJsonIterator temp;
 		temp.m_Root = m_Root;
 		temp.m_nIndex = m_nIndex--;
-		
+
 		switch (m_Root->GetType())
 		{
 		case ValueType::arrayValue:
@@ -1325,4 +1323,5 @@ public:
 	}
 };
 
+#include "PykJsonPointer.h"
 using CPykJsonValueEx = CPykJsonPointer<CPykJsonValue>;

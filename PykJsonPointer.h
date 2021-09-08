@@ -259,8 +259,6 @@ public:
 	}
 };
 
-class CpykJsonIterator;
-
 template <class T>
 class CpykJsonIteratorEx
 {
