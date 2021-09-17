@@ -860,7 +860,7 @@ public:
 		return m_parent;
 	}
 
-	auto GetArrayBegin()
+	ObjectVec::iterator GetArrayBegin()
 	{
 		if (ValueType::arrayValue == m_type)
 		{
@@ -869,7 +869,7 @@ public:
 		return ObjectVec::iterator();
 	}
 
-	auto GetArrayEnd()
+	ObjectVec::iterator GetArrayEnd()
 	{
 		if (ValueType::arrayValue == m_type)
 		{
@@ -878,7 +878,7 @@ public:
 		return ObjectVec::iterator();
 	}
 
-	auto GetMapBegin()
+	ObjectMap::iterator GetMapBegin()
 	{
 		if (ValueType::mapValue == m_type)
 		{
@@ -887,7 +887,7 @@ public:
 		return ObjectMap::iterator();
 	}
 
-	auto GetMapEnd()
+	ObjectMap::iterator GetMapEnd()
 	{
 		if (ValueType::mapValue == m_type)
 		{
@@ -896,12 +896,12 @@ public:
 		return ObjectMap::iterator();
 	}
 
-	auto EraseArray(ObjectVec::iterator it)
+	ObjectVec::iterator EraseArray(ObjectVec::iterator it)
 	{
 		return m_value.m_ver->erase(it);
 	}
 
-	auto EraseMap(ObjectMap::iterator it)
+	ObjectMap::iterator EraseMap(ObjectMap::iterator it)
 	{
 		return m_value.m_map->erase(it);
 	}
