@@ -110,7 +110,12 @@ public:
 		Init(value);
 		return *this;
 	}
-
+	void Reset()
+	{
+		this->m_pValue = nullptr;
+		m_ptrRoot = nullptr;
+	}
+	
 	void Reset(const CPykSharePointer& value)
 	{
 		m_ptrRoot = value.m_ptrRoot;

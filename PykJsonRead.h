@@ -65,10 +65,14 @@ protected:
 
 	bool InterParse(const char* pBegin, const char* pEnd, CPykJsonValueEx& value)
 	{
-		CPykJsonValue* p = new CPykJsonValue;
-		bool bRet = parse(pBegin, pEnd, *p);
-		CPykJsonValueEx valueTemp(std::shared_ptr<CPykJsonValue>(p), p);
-		value = valueTemp;
+		std::shared_ptr<CPykJsonValue> pShare = std::make_shared<CPykJsonValue>();
+		bool bRet = parse(pBegin, pEnd, *pShare.get());
+		if (!bRet)
+		{
+			return bRet;
+		}
+		
+		value = CPykJsonValueEx(pShare, pShare.get());
 		return bRet;
 	}
 
