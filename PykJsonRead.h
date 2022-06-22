@@ -56,6 +56,11 @@ public:
 
 	bool parse(const char* pBegin, const char* pEnd, CPykJsonValue& value)
 	{
+		if (pBegin == pEnd)
+		{
+			return false;
+		}
+		
 		m_pBegin = pBegin;
 		m_pEnd = pEnd;
 		value = ReadValue();
@@ -65,14 +70,14 @@ protected:
 
 	bool InterParse(const char* pBegin, const char* pEnd, CPykJsonValueEx& value)
 	{
-		std::shared_ptr<CPykJsonValue> pShare = std::make_shared<CPykJsonValue>();
-		bool bRet = parse(pBegin, pEnd, *pShare.get());
+		CPykJsonValue root;
+		bool bRet = parse(pBegin, pEnd, root);
 		if (!bRet)
 		{
 			return bRet;
 		}
 		
-		value = CPykJsonValueEx(pShare, pShare.get());
+		value = std::move(root);
 		return bRet;
 	}
 
@@ -286,6 +291,10 @@ protected:
 					else if (0 == lHi)
 					{
 						return CPykJsonValue((unsigned int)ull);
+					}
+					else
+					{
+						return CPykJsonValue((long long)ull);
 					}
 					assert(false);
 					return CPykJsonValue();

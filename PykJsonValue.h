@@ -14,14 +14,15 @@
 enum class ValueType
 {
 	nullValue = 0, ///< 'null' value
-	intValue,      ///< signed integer value
-	uintValue,     ///< unsigned integer value
-	realValue,     ///< double value
+	intValue,	   ///< signed integer value
+	uintValue,	   ///< unsigned integer value
+	longlongValue, ///< long long value(linux long)
+	realValue,	   ///< double value
 	stringValue,   ///< UTF-8 string value
 	booleanValue,  ///< bool value
-	arrayValue,    ///< array value (ordered list)
-	mapValue,		///< object value (collection of name/value pairs).
-	refValue		///< xref value (not own)
+	arrayValue,	   ///< array value (ordered list)
+	mapValue,	   ///< object value (collection of name/value pairs).
+	refValue	   ///< xref value (not own)
 };
 
 class CPykJsonValue
@@ -44,25 +45,31 @@ public:
 		m_type = ValueType::nullValue;
 	}
 
-	CPykJsonValue(const int n)
+	CPykJsonValue(int n)
 	{
 		m_type = ValueType::intValue;
 		m_value.m_int = n;
 	}
 
-	CPykJsonValue(const unsigned int n)
+	CPykJsonValue(unsigned int n)
 	{
 		m_type = ValueType::uintValue;
 		m_value.m_uint = n;
 	}
 
-	CPykJsonValue(const double d)
+	CPykJsonValue(long long ll)
+	{
+		m_type = ValueType::longlongValue;
+		m_value.m_longlong = ll;
+	}
+
+	CPykJsonValue(double d)
 	{
 		m_type = ValueType::realValue;
 		m_value.m_real = d;
 	}
 
-	CPykJsonValue(const bool b)
+	CPykJsonValue(bool b)
 	{
 		m_type = ValueType::booleanValue;
 		m_value.m_bool = b;
@@ -80,6 +87,9 @@ public:
 			break;
 		case ValueType::uintValue:
 			m_value.m_uint = 0;
+			break;
+		case ValueType::longlongValue:
+			m_value.m_longlong = 0;
 			break;
 		case ValueType::realValue:
 			m_value.m_real = 0;
@@ -102,12 +112,12 @@ public:
 		}
 	}
 
-	CPykJsonValue(const CPykJsonValue& value) : CPykJsonValue()
+	CPykJsonValue(const CPykJsonValue &value) : CPykJsonValue()
 	{
 		*this = value;
 	}
 
-	CPykJsonValue(CPykJsonValue&& value) : CPykJsonValue()
+	CPykJsonValue(CPykJsonValue &&value) : CPykJsonValue()
 	{
 		m_type = value.m_type;
 		m_stringLen = value.m_stringLen;
@@ -117,25 +127,23 @@ public:
 		memset(&value.m_value, 0, sizeof(ValueHolder));
 	}
 
-	CPykJsonValue(const char* pBegin, const char* pEnd = NULL)
+	CPykJsonValue(const char *pBegin, const char *pEnd = NULL)
 	{
 		InitByString(pBegin, pEnd);
 	}
 
-	CPykJsonValue(CPykJsonValue* value)
+	CPykJsonValue(CPykJsonValue *value)
 	{
 		m_type = ValueType::refValue;
 		m_value.m_ref = value;
 	}
 
-	CPykJsonValue(const std::string& str) : CPykJsonValue(str.c_str(), str.c_str() + str.length())
+	CPykJsonValue(const std::string &str) : CPykJsonValue(str.c_str(), str.c_str() + str.length())
 	{
-
 	}
 #ifdef SupportWideChar
-	CPykJsonValue(const wchar_t* pWchar) : CPykJsonValue((const char*)CPykMgrTemplate<CP_UTF8>(pWchar))
+	CPykJsonValue(const wchar_t *pWchar) : CPykJsonValue((const char *)CPykMgrTemplate<CP_UTF8>(pWchar))
 	{
-
 	}
 #endif
 	~CPykJsonValue()
@@ -151,6 +159,11 @@ public:
 	operator unsigned int() const
 	{
 		return ReturnNum<unsigned int>();
+	}
+
+	operator long long() const
+	{
+		return ReturnNum<long long>();
 	}
 
 	operator long() const
@@ -173,7 +186,7 @@ public:
 		return ReturnBool();
 	}
 
-	operator const char* () const
+	operator const char *() const
 	{
 		if (ValueType::stringValue == m_type)
 		{
@@ -182,7 +195,7 @@ public:
 		return "";
 	}
 
-	friend std::ostream& operator <<(std::ostream& out, const CPykJsonValue& value)
+	friend std::ostream &operator<<(std::ostream &out, const CPykJsonValue &value)
 	{
 		switch (value.m_type)
 		{
@@ -201,6 +214,11 @@ public:
 			out << value.m_value.m_uint;
 			break;
 		}
+		case ValueType::longlongValue:
+		{
+			out << value.m_value.m_longlong;
+			break;
+		}
 		case ValueType::realValue:
 		{
 			out << value.m_value.m_real;
@@ -214,7 +232,7 @@ public:
 		case ValueType::stringValue:
 		{
 			out << "\"";
-			const char* pStr = value.m_value.m_string;
+			const char *pStr = value.m_value.m_string;
 			while (*pStr != '\0')
 			{
 				switch (*pStr)
@@ -257,7 +275,7 @@ public:
 		case ValueType::mapValue:
 		{
 			out << "{";
-			for (auto it = value.m_value.m_map->begin(); it != value.m_value.m_map->end(); )
+			for (auto it = value.m_value.m_map->begin(); it != value.m_value.m_map->end();)
 			{
 				out << "\"" << it->first << "\":" << it->second;
 				it++;
@@ -272,7 +290,7 @@ public:
 		case ValueType::arrayValue:
 		{
 			out << "[";
-			for (auto it = value.m_value.m_ver->begin(); it != value.m_value.m_ver->end(); )
+			for (auto it = value.m_value.m_ver->begin(); it != value.m_value.m_ver->end();)
 			{
 				out << *it;
 				it++;
@@ -306,6 +324,9 @@ public:
 		case ValueType::uintValue:
 			nRet = ++m_value.m_uint;
 			break;
+		case ValueType::longlongValue:
+			nRet = ++m_value.m_longlong;
+			break;
 		case ValueType::refValue:
 			nRet = m_value.m_ref->operator++();
 			break;
@@ -332,6 +353,9 @@ public:
 		case ValueType::uintValue:
 			nRet = m_value.m_uint++;
 			break;
+		case ValueType::longlongValue:
+			nRet = m_value.m_longlong++;
+			break;
 		case ValueType::refValue:
 			nRet = m_value.m_ref->operator++(0);
 			break;
@@ -344,7 +368,7 @@ public:
 	}
 
 	//比较函数
-	bool operator ==(const CPykJsonValue& value)
+	bool operator==(const CPykJsonValue &value)
 	{
 		if (m_type == value.m_type)
 		{
@@ -370,13 +394,13 @@ public:
 	}
 
 	//比较函数
-	bool operator !=(const CPykJsonValue& value)
+	bool operator!=(const CPykJsonValue &value)
 	{
 		return !operator==(value);
 	}
 
 	//map 对象获取数据
-	CPykJsonValue* operator ()(const char* pName)
+	CPykJsonValue *operator()(const char *pName)
 	{
 		assert(pName);
 		if (ValueType::mapValue == m_type)
@@ -403,7 +427,7 @@ public:
 	}
 
 	//map 对象获取数据，在没有匹配时返回新增数据
-	CPykJsonValue* operator [](const char* pName)
+	CPykJsonValue *operator[](const char *pName)
 	{
 		assert(pName);
 		if (ValueType::nullValue == m_type)
@@ -433,7 +457,7 @@ public:
 	}
 
 	//获取数组数据
-	CPykJsonValue* operator [](size_t nNum)
+	CPykJsonValue *operator[](size_t nNum)
 	{
 		if (ValueType::arrayValue == m_type)
 		{
@@ -467,7 +491,7 @@ public:
 		return nullptr;
 	}
 	//复制构造函数
-	CPykJsonValue& operator =(const CPykJsonValue& value)
+	CPykJsonValue &operator=(const CPykJsonValue &value)
 	{
 		Reset();
 		m_type = value.m_type;
@@ -490,7 +514,7 @@ public:
 		return *this;
 	}
 	//移动构造函数
-	CPykJsonValue& operator =(CPykJsonValue&& value)
+	CPykJsonValue &operator=(CPykJsonValue &&value)
 	{
 		Reset();
 		m_type = value.m_type;
@@ -524,6 +548,7 @@ public:
 		{
 		case ValueType::intValue:
 		case ValueType::uintValue:
+		case ValueType::longlongValue:
 		case ValueType::realValue:
 		case ValueType::booleanValue:
 		case ValueType::stringValue:
@@ -544,7 +569,7 @@ public:
 		return 0;
 	}
 	//数组添加数据
-	CPykJsonValue* Append(const CPykJsonValue& value)
+	CPykJsonValue *Append(const CPykJsonValue &value)
 	{
 		if (ValueType::nullValue == m_type)
 		{
@@ -560,7 +585,7 @@ public:
 		return nullptr;
 	}
 	//数据添加可移动数据
-	CPykJsonValue* Append(CPykJsonValue&& value)
+	CPykJsonValue *Append(CPykJsonValue &&value)
 	{
 		if (ValueType::nullValue == m_type)
 		{
@@ -576,8 +601,48 @@ public:
 		return nullptr;
 	}
 
+	bool ExpandAppend(const CPykJsonValue &value)
+	{
+		if (ValueType::nullValue == m_type)
+		{
+			m_type = ValueType::arrayValue;
+			m_value.m_ver = new ObjectVec;
+		}
+
+		if (ValueType::arrayValue == m_type && ValueType::arrayValue == value.m_type)
+		{
+			for (auto it = value.m_value.m_ver->begin(); it != value.m_value.m_ver->end(); it++)
+			{
+				(*m_value.m_ver).push_back(*it);
+			}
+			
+			return true;
+		}
+		return false;
+	}
+
+	bool ExpandAppend(CPykJsonValue &&value)
+	{
+		if (ValueType::nullValue == m_type)
+		{
+			m_type = ValueType::arrayValue;
+			m_value.m_ver = new ObjectVec;
+		}
+
+		if (ValueType::arrayValue == m_type && ValueType::arrayValue == value.m_type)
+		{
+			for (auto it = value.m_value.m_ver->begin(); it != value.m_value.m_ver->end(); it++)
+			{
+				(*m_value.m_ver).push_back(std::move(*it));
+			}
+			value.Reset();
+			return true;
+		}
+		return false;
+	}
+
 	//数据添加
-	CPykJsonValue* AppendNew()
+	CPykJsonValue *AppendNew()
 	{
 		if (ValueType::nullValue == m_type)
 		{
@@ -593,7 +658,7 @@ public:
 		return nullptr;
 	}
 
-	bool AddKeyValue(std::string&& strKey, CPykJsonValue&& value)
+	bool AddKeyValue(std::string &&strKey, CPykJsonValue &&value)
 	{
 		assert(strKey.length());
 		if (ValueType::nullValue == m_type)
@@ -624,12 +689,12 @@ public:
 		return false;
 	}
 
-	bool AddKeyValue(const char* lpKey, CPykJsonValue&& value)
+	bool AddKeyValue(const char *lpKey, CPykJsonValue &&value)
 	{
 		return AddKeyValue((std::string)lpKey, std::forward<CPykJsonValue>(value));
 	}
 
-	bool Remove(const char* pStr, CPykJsonValue *removed, bool bAll = true)
+	bool Remove(const char *pStr, CPykJsonValue *removed, bool bAll = true)
 	{
 		if (ValueType::mapValue == m_type)
 		{
@@ -667,12 +732,12 @@ public:
 		return false;
 	}
 #ifdef SupportWideChar
-	bool Remove(const wchar_t* pStr, CPykJsonValue* removed, bool bAll = true)
+	bool Remove(const wchar_t *pStr, CPykJsonValue *removed, bool bAll = true)
 	{
-		return Remove((const char*)CPykMgrTemplate<CP_UTF8>(pStr), removed, bAll);
+		return Remove((const char *)CPykMgrTemplate<CP_UTF8>(pStr), removed, bAll);
 	}
 #endif
-	bool Remove(const CPykJsonValue& value, bool bAll = true)
+	bool Remove(const CPykJsonValue &value, bool bAll = true)
 	{
 		if (ValueType::arrayValue == m_type)
 		{
@@ -696,7 +761,7 @@ public:
 		return false;
 	}
 
-	bool RemoveItemByIndex(size_t nNum, CPykJsonValue* removed)
+	bool RemoveItemByIndex(size_t nNum, CPykJsonValue *removed)
 	{
 		if (ValueType::arrayValue == m_type)
 		{
@@ -721,8 +786,45 @@ public:
 		return false;
 	}
 
+	//查找
+	CPykJsonValue *Find(const char *pName)
+	{
+		if (ValueType::mapValue == m_type)
+		{
+			#ifdef NO_SORT
+			auto it = (*m_value.m_map).begin();
+			for (; it != (*m_value.m_map).end(); it++)
+			{
+				if (0 == it->first.compare(pName))
+				{
+					break;
+				}
+			}
+#else
+			auto it = (*m_value.m_map).find(pName);
+#endif // NO_SORT
+
+			if ((*m_value.m_map).end() != it)
+			{
+				return GetTrueValue(&(it->second));
+			}
+		}
+		else if (ValueType::arrayValue == m_type)
+		{
+			int n = 0;
+			for (auto it = (*m_value.m_ver).begin(); it != (*m_value.m_ver).end(); n++, it++)
+			{
+				if (0 == strcmp((const char*)*it, pName))
+				{
+					return &*it;
+				}
+			}
+		}
+		return nullptr;
+	}
+
 	//数组查找
-	CPykJsonValue* Find(const CPykJsonValue& value)
+	CPykJsonValue *Find(const CPykJsonValue &value)
 	{
 		if (ValueType::arrayValue == m_type)
 		{
@@ -738,7 +840,7 @@ public:
 		return nullptr;
 	}
 
-	std::string FindKeyByValue(const CPykJsonValue* value)
+	std::string FindKeyByValue(const CPykJsonValue *value)
 	{
 		if (value && ValueType::mapValue == m_type)
 		{
@@ -753,7 +855,26 @@ public:
 		return "";
 	}
 
-	CPykJsonValue* GetMapValue(size_t nNum, const char*& lpKey)
+	CPykJsonValue *FindItemByKeyAndName(const char*pKey, const char* pName)
+	{
+		if (ValueType::arrayValue == m_type)
+		{
+			int n = 0;
+			for (auto it = (*m_value.m_ver).begin(); it != (*m_value.m_ver).end(); n++, it++)
+			{
+				CPykJsonValue* pValue = it->Find(pKey);
+				if (pValue && 
+					ValueType::stringValue == pValue->m_type &&
+					0 == strcmp(pValue->m_value.m_string, pName))
+				{
+					return &*it;
+				}
+			}
+		}
+		return nullptr;
+	}
+
+	CPykJsonValue *GetMapValue(size_t nNum, const char *&lpKey)
 	{
 		if (ValueType::mapValue == m_type &&
 			m_value.m_map->size() > nNum)
@@ -761,7 +882,7 @@ public:
 #ifdef NO_SORT
 #ifndef USE_LIST
 			{
-				auto& it = (*(m_value.m_map))[nNum];
+				auto &it = (*(m_value.m_map))[nNum];
 				lpKey = it.first.c_str();
 				return GetTrueValue(&it.second);
 			}
@@ -786,7 +907,7 @@ public:
 
 	void ParseSelfString()
 	{
-		for (char* lp = m_value.m_string; lp = strchr(lp, '\\'); lp++)
+		for (char *lp = m_value.m_string; lp = strchr(lp, '\\'); lp++)
 		{
 			switch (*(lp + 1))
 			{
@@ -824,7 +945,7 @@ public:
 			{
 				unsigned long luicode;
 				int nUnicodeUse = 0;
-				char cTemp[6] = { 0 };
+				char cTemp[6] = {0};
 				memcpy(cTemp, lp + 2, 4);
 				luicode = strtoul(cTemp, NULL, 16);
 				if (luicode >= 0xD800 && luicode < 0xDC00)
@@ -851,11 +972,10 @@ public:
 			default:
 				break;
 			}
-
 		}
 	}
 
-	CPykJsonValue* GetParent()
+	CPykJsonValue *GetParent()
 	{
 		return m_parent;
 	}
@@ -905,195 +1025,204 @@ public:
 	{
 		return m_value.m_map->erase(it);
 	}
+
 private:
-	
 	ValueType m_type;
 	union ValueHolder
 	{
 		int m_int;
 		unsigned int m_uint;
+		long long m_longlong;
 		double m_real;
 		bool m_bool;
-		char* m_string;
-		ObjectMap* m_map;
-		ObjectVec* m_ver;
-		CPykJsonValue* m_ref;
-} m_value = { 0 };
+		char *m_string;
+		ObjectMap *m_map;
+		ObjectVec *m_ver;
+		CPykJsonValue *m_ref;
+	} m_value = {0};
 
-unsigned int m_stringLen = 0;
-CPykJsonValue* m_parent = nullptr;
+	unsigned int m_stringLen = 0;
+	CPykJsonValue *m_parent = nullptr;
 
-void InitByString(const char* pBegin, const char* pEnd = NULL)
-{
-	if (!pBegin)
+	void InitByString(const char *pBegin, const char *pEnd = NULL)
 	{
-		m_type = ValueType::stringValue;
-		m_value.m_string = new char[1];
-		memset(m_value.m_string, 0, 1);
+		if (!pBegin)
+		{
+			m_type = ValueType::stringValue;
+			m_value.m_string = new char[1];
+			memset(m_value.m_string, 0, 1);
+			m_stringLen = 0;
+		}
+		else
+		{
+			m_type = ValueType::stringValue;
+			if (!pEnd)
+			{
+				m_stringLen = (unsigned int)strlen(pBegin);
+			}
+			else
+			{
+				m_stringLen = (unsigned int)(pEnd - pBegin);
+			}
+
+			m_value.m_string = new char[m_stringLen + 1];
+			memset(m_value.m_string, 0, m_stringLen + 1);
+			memcpy(m_value.m_string, pBegin, m_stringLen);
+		}
+	}
+
+	void Reset()
+	{
+		switch (m_type)
+		{
+		case ValueType::stringValue:
+			delete[] m_value.m_string;
+			break;
+		case ValueType::arrayValue:
+			delete m_value.m_ver;
+			break;
+		case ValueType::mapValue:
+			delete m_value.m_map;
+			break;
+		default:
+			break;
+		}
+		m_type = ValueType::nullValue;
 		m_stringLen = 0;
+		memset(&m_value, 0, sizeof(ValueHolder));
 	}
-	else
+
+	template <class T>
+	T ReturnNum(T def = 0) const
 	{
-		m_type = ValueType::stringValue;
-		if (!pEnd)
+		if (ValueType::booleanValue == m_type)
 		{
-			m_stringLen = (unsigned int)strlen(pBegin);
+			return (T)(m_value.m_bool ? 1 : 0);
 		}
-		else
+		else if (ValueType::uintValue == m_type)
 		{
-			m_stringLen = (unsigned int)(pEnd - pBegin);
+			return (T)m_value.m_uint;
 		}
-
-		m_value.m_string = new char[m_stringLen + 1];
-		memset(m_value.m_string, 0, m_stringLen + 1);
-		memcpy(m_value.m_string, pBegin, m_stringLen);
-	}
-}
-
-void Reset()
-{
-	switch (m_type)
-	{
-	case ValueType::stringValue:
-		delete[]m_value.m_string;
-		break;
-	case ValueType::arrayValue:
-		delete m_value.m_ver;
-		break;
-	case ValueType::mapValue:
-		delete m_value.m_map;
-		break;
-	default:
-		break;
-	}
-	m_type = ValueType::nullValue;
-	m_stringLen = 0;
-	memset(&m_value, 0, sizeof(ValueHolder));
-}
-
-template<class T>
-T ReturnNum(T def = 0) const
-{
-	if (ValueType::booleanValue == m_type)
-	{
-		return (T)(m_value.m_bool ? 1 : 0);
-	}
-	else if (ValueType::uintValue == m_type)
-	{
-		return (T)m_value.m_uint;
-	}
-	else if (ValueType::intValue == m_type)
-	{
-		return (T)m_value.m_int;
-	}
-	else if (ValueType::realValue == m_type)
-	{
-		return (T)m_value.m_real;
-	}
-	else if (ValueType::stringValue == m_type)
-	{
-		if (strchr(m_value.m_string, '.'))
+		else if (ValueType::intValue == m_type)
 		{
-			return (T)atof(m_value.m_string);
+			return (T)m_value.m_int;
 		}
-		else
+		else if (ValueType::longlongValue == m_type)
 		{
-			return (T)strtoull(m_value.m_string, NULL, 0);
+			return (T)m_value.m_longlong;
 		}
-	}
-	return def;
-}
-
-bool ReturnBool() const
-{
-	if (ValueType::nullValue == m_type)
-	{
-		return false;
-	}
-	if (ValueType::booleanValue == m_type)
-	{
-		return m_value.m_bool;
-	}
-	if (ValueType::uintValue == m_type)
-	{
-		return (bool)m_value.m_uint;
-	}
-	if (ValueType::intValue == m_type)
-	{
-		return (bool)m_value.m_int;
-	}
-	return true;
-}
-
-CPykJsonValue* GetTrueValue(CPykJsonValue* value)
-{
-	while (ValueType::refValue == value->m_type)
-	{
-		value = value->m_value.m_ref;
-	}
-	value->m_parent = this;
-	return value;
-}
-
-int unicode_to_utf8(unsigned long unic, char* pOutput, int outSize)
-{
-	assert(pOutput != NULL);
-	assert(outSize >= 6);
-
-	if (unic <= 0x0000007F)
-	{
-		// * U-00000000 - U-0000007F:  0xxxxxxx
-		*pOutput = (unic & 0x7F);
-		return 1;
-	}
-	else if (unic >= 0x00000080 && unic <= 0x000007FF)
-	{
-		// * U-00000080 - U-000007FF:  110xxxxx 10xxxxxx
-		*(pOutput + 1) = (unic & 0x3F) | 0x80;
-		*pOutput = ((unic >> 6) & 0x1F) | 0xC0;
-		return 2;
-	}
-	else if (unic >= 0x00000800 && unic <= 0x0000FFFF)
-	{
-		// * U-00000800 - U-0000FFFF:  1110xxxx 10xxxxxx 10xxxxxx
-		*(pOutput + 2) = (unic & 0x3F) | 0x80;
-		*(pOutput + 1) = ((unic >> 6) & 0x3F) | 0x80;
-		*pOutput = ((unic >> 12) & 0x0F) | 0xE0;
-		return 3;
-	}
-	else if (unic >= 0x00010000 && unic <= 0x001FFFFF)
-	{
-		// * U-00010000 - U-001FFFFF:  11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
-		*(pOutput + 3) = (unic & 0x3F) | 0x80;
-		*(pOutput + 2) = ((unic >> 6) & 0x3F) | 0x80;
-		*(pOutput + 1) = ((unic >> 12) & 0x3F) | 0x80;
-		*pOutput = ((unic >> 18) & 0x07) | 0xF0;
-		return 4;
-	}
-	else if (unic >= 0x00200000 && unic <= 0x03FFFFFF)
-	{
-		// * U-00200000 - U-03FFFFFF:  111110xx 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx
-		*(pOutput + 4) = (unic & 0x3F) | 0x80;
-		*(pOutput + 3) = ((unic >> 6) & 0x3F) | 0x80;
-		*(pOutput + 2) = ((unic >> 12) & 0x3F) | 0x80;
-		*(pOutput + 1) = ((unic >> 18) & 0x3F) | 0x80;
-		*pOutput = ((unic >> 24) & 0x03) | 0xF8;
-		return 5;
-	}
-	else if (unic >= 0x04000000 && unic <= 0x7FFFFFFF)
-	{
-		// * U-04000000 - U-7FFFFFFF:  1111110x 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx
-		*(pOutput + 5) = (unic & 0x3F) | 0x80;
-		*(pOutput + 4) = ((unic >> 6) & 0x3F) | 0x80;
-		*(pOutput + 3) = ((unic >> 12) & 0x3F) | 0x80;
-		*(pOutput + 2) = ((unic >> 18) & 0x3F) | 0x80;
-		*(pOutput + 1) = ((unic >> 24) & 0x3F) | 0x80;
-		*pOutput = ((unic >> 30) & 0x01) | 0xFC;
-		return 6;
+		else if (ValueType::realValue == m_type)
+		{
+			return (T)m_value.m_real;
+		}
+		else if (ValueType::stringValue == m_type)
+		{
+			if (strchr(m_value.m_string, '.'))
+			{
+				return (T)atof(m_value.m_string);
+			}
+			else
+			{
+				return (T)strtoull(m_value.m_string, NULL, 0);
+			}
+		}
+		return def;
 	}
 
-	return 0;
-}
+	bool ReturnBool() const
+	{
+		if (ValueType::nullValue == m_type)
+		{
+			return false;
+		}
+		if (ValueType::booleanValue == m_type)
+		{
+			return m_value.m_bool;
+		}
+		if (ValueType::uintValue == m_type)
+		{
+			return (bool)m_value.m_uint;
+		}
+		if (ValueType::intValue == m_type)
+		{
+			return (bool)m_value.m_int;
+		}
+		if (ValueType::longlongValue == m_type)
+		{
+			return (bool)m_value.m_longlong;
+		}
+		return true;
+	}
+
+	CPykJsonValue *GetTrueValue(CPykJsonValue *value)
+	{
+		while (ValueType::refValue == value->m_type)
+		{
+			value = value->m_value.m_ref;
+		}
+		value->m_parent = this;
+		return value;
+	}
+
+	int unicode_to_utf8(unsigned long unic, char *pOutput, int outSize)
+	{
+		assert(pOutput != NULL);
+		assert(outSize >= 6);
+
+		if (unic <= 0x0000007F)
+		{
+			// * U-00000000 - U-0000007F:  0xxxxxxx
+			*pOutput = (unic & 0x7F);
+			return 1;
+		}
+		else if (unic >= 0x00000080 && unic <= 0x000007FF)
+		{
+			// * U-00000080 - U-000007FF:  110xxxxx 10xxxxxx
+			*(pOutput + 1) = (unic & 0x3F) | 0x80;
+			*pOutput = ((unic >> 6) & 0x1F) | 0xC0;
+			return 2;
+		}
+		else if (unic >= 0x00000800 && unic <= 0x0000FFFF)
+		{
+			// * U-00000800 - U-0000FFFF:  1110xxxx 10xxxxxx 10xxxxxx
+			*(pOutput + 2) = (unic & 0x3F) | 0x80;
+			*(pOutput + 1) = ((unic >> 6) & 0x3F) | 0x80;
+			*pOutput = ((unic >> 12) & 0x0F) | 0xE0;
+			return 3;
+		}
+		else if (unic >= 0x00010000 && unic <= 0x001FFFFF)
+		{
+			// * U-00010000 - U-001FFFFF:  11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
+			*(pOutput + 3) = (unic & 0x3F) | 0x80;
+			*(pOutput + 2) = ((unic >> 6) & 0x3F) | 0x80;
+			*(pOutput + 1) = ((unic >> 12) & 0x3F) | 0x80;
+			*pOutput = ((unic >> 18) & 0x07) | 0xF0;
+			return 4;
+		}
+		else if (unic >= 0x00200000 && unic <= 0x03FFFFFF)
+		{
+			// * U-00200000 - U-03FFFFFF:  111110xx 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx
+			*(pOutput + 4) = (unic & 0x3F) | 0x80;
+			*(pOutput + 3) = ((unic >> 6) & 0x3F) | 0x80;
+			*(pOutput + 2) = ((unic >> 12) & 0x3F) | 0x80;
+			*(pOutput + 1) = ((unic >> 18) & 0x3F) | 0x80;
+			*pOutput = ((unic >> 24) & 0x03) | 0xF8;
+			return 5;
+		}
+		else if (unic >= 0x04000000 && unic <= 0x7FFFFFFF)
+		{
+			// * U-04000000 - U-7FFFFFFF:  1111110x 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx
+			*(pOutput + 5) = (unic & 0x3F) | 0x80;
+			*(pOutput + 4) = ((unic >> 6) & 0x3F) | 0x80;
+			*(pOutput + 3) = ((unic >> 12) & 0x3F) | 0x80;
+			*(pOutput + 2) = ((unic >> 18) & 0x3F) | 0x80;
+			*(pOutput + 1) = ((unic >> 24) & 0x3F) | 0x80;
+			*pOutput = ((unic >> 30) & 0x01) | 0xFC;
+			return 6;
+		}
+
+		return 0;
+	}
 };
 
 class CpykJsonIterator
@@ -1102,10 +1231,11 @@ private:
 	CPykJsonValue::ObjectMap::iterator itMap = CPykJsonValue::ObjectMap::iterator();
 	CPykJsonValue::ObjectVec::iterator itVec = CPykJsonValue::ObjectVec::iterator();
 	size_t m_nIndex = 0;
-	CPykJsonValue* m_Root = NULL;
+	CPykJsonValue *m_Root = NULL;
+
 public:
 	CpykJsonIterator() {}
-	CpykJsonIterator(size_t nIndex, CPykJsonValue* node)
+	CpykJsonIterator(size_t nIndex, CPykJsonValue *node)
 	{
 		m_nIndex = nIndex;
 		m_Root = node;
@@ -1149,7 +1279,7 @@ public:
 		}
 	}
 	// Construct an iterator which points to the specified node
-	CpykJsonIterator(const CpykJsonIterator& node)
+	CpykJsonIterator(const CpykJsonIterator &node)
 	{
 		m_nIndex = node.m_nIndex;
 		itMap = node.itMap;
@@ -1158,7 +1288,7 @@ public:
 	}
 
 	// Iterator operators
-	bool operator==(const CpykJsonIterator& rhs) const
+	bool operator==(const CpykJsonIterator &rhs) const
 	{
 		if (m_nIndex == rhs.m_nIndex &&
 			m_Root == rhs.m_Root)
@@ -1168,12 +1298,12 @@ public:
 		return false;
 	}
 
-	bool operator!=(const CpykJsonIterator& rhs) const
+	bool operator!=(const CpykJsonIterator &rhs) const
 	{
 		return !(*this == rhs);
 	}
 
-	CPykJsonValue& operator*()
+	CPykJsonValue &operator*()
 	{
 		switch (m_Root->GetType())
 		{
@@ -1190,7 +1320,7 @@ public:
 		return *m_Root;
 	}
 
-	CPykJsonValue* operator->()
+	CPykJsonValue *operator->()
 	{
 		switch (m_Root->GetType())
 		{
@@ -1207,13 +1337,13 @@ public:
 		return m_Root;
 	}
 
-	CPykJsonValue* GetKeyValue(const char*& lpKey)
+	CPykJsonValue *GetKeyValue(const char *&lpKey)
 	{
 		lpKey = itMap->first.c_str();
 		return &itMap->second;
 	}
 
-	const CpykJsonIterator& operator++()
+	const CpykJsonIterator &operator++()
 	{
 		m_nIndex++;
 		switch (m_Root->GetType())
@@ -1258,7 +1388,7 @@ public:
 		return temp;
 	}
 
-	const CpykJsonIterator& operator--()
+	const CpykJsonIterator &operator--()
 	{
 		m_nIndex--;
 		switch (m_Root->GetType())

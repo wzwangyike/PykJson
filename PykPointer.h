@@ -93,11 +93,6 @@ public:
 		return *this;
 	}
 
-	CPykSharePointer& operator =(CPykSharePointer&& value)
-	{
-		Init(std::forward<CPykSharePointer>(value));
-		return *this;
-	}
 #endif
 	CPykSharePointer& operator =(const CPykSharePointer& value)
 	{

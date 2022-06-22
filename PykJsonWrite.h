@@ -56,7 +56,7 @@ public:
 					str += "\"";
 					const char* lpKey = nullptr;
 					CPykJsonValueEx child = it.GetKeyValue(lpKey);
-					str += lpKey;
+					DealJsonString(lpKey, str);
 					str += "\": ";
 					ToFormateString(child, str, nDeep + 1);
 					str += ",";
@@ -106,6 +106,9 @@ protected:
 			return;
 		case ValueType::uintValue:
 			str += std::to_string((unsigned int)value);
+			return;
+		case ValueType::longlongValue:
+			str += std::to_string((long long)value);
 			return;
 		case ValueType::realValue:
 			str += std::to_string((double)value);

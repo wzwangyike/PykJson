@@ -11,7 +11,7 @@ public:
 			{
 			case ValueType::stringValue:
 			{
-				jsonFind.Reset(jsonFind[(const char*)way]);
+				jsonFind.Reset(jsonFind[(const char *)way]);
 				break;
 			}
 			case ValueType::intValue:
@@ -24,8 +24,8 @@ public:
 			{
 				if (way["Key"])
 				{
-					const char* key = way["Key"];
-					const char* value = way["Value"];
+					const char *key = way["Key"];
+					const char *value = way["Value"];
 					for (CPykJsonValueEx find : jsonFind)
 					{
 						if (0 == _stricmp(find[key], value))
@@ -85,13 +85,13 @@ public:
 		return jsonFind;
 	}
 
-	static CPykJsonValueEx ReadJsonFile(const char* lpFilePath, void (*pBufferDecode)(unsigned char*pBuffer, size_t size) = NULL)
+	static CPykJsonValueEx ReadJsonFile(const char *lpFilePath, void (*pBufferDecode)(unsigned char *pBuffer, size_t size) = NULL)
 	{
-		FILE* fp = NULL;
+		FILE *fp = NULL;
 #ifdef _WIN32
 		fopen_s(&fp, lpFilePath, "rb");
 #else
-		FILE* fp = fopen(lpFilePath, "rb");
+		FILE *fp = fopen(lpFilePath, "rb");
 #endif // _WIN32
 		if (!fp)
 		{
@@ -101,7 +101,7 @@ public:
 		long size = ftell(fp);
 		std::unique_ptr<char[]> p(new char[size]);
 		fseek(fp, 0, SEEK_SET);
-		if (size != fread((void*)p.get(), sizeof(char), size, fp))
+		if (size != fread((void *)p.get(), sizeof(char), size, fp))
 		{
 			fclose(fp);
 			return CPykJsonValueEx();
@@ -119,5 +119,36 @@ public:
 		}
 		return value;
 	}
+#ifdef _WINDOWS_
+	static CPykJsonValueEx ReadJsonFile(const wchar_t *lpFilePath, void (*pBufferDecode)(unsigned char *pBuffer, size_t size) = NULL)
+	{
+		HANDLE hFile = CreateFile(lpFilePath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+		if (INVALID_HANDLE_VALUE == hFile)
+		{
+			return CPykJsonValueEx();
+		}
+		DWORD dwSize = GetFileSize(hFile, NULL);
+		std::unique_ptr<char[]> p(new char[dwSize]);
+		DWORD dwReaded = 0;
+		
+		if (!ReadFile(hFile, (void *)p.get(), dwSize, &dwReaded, NULL) ||
+			dwReaded != dwSize)
+		{
+			CloseHandle(hFile);
+			return CPykJsonValueEx();
+		}
+		CloseHandle(hFile);
+		if (pBufferDecode)
+		{
+			pBufferDecode((unsigned char *)p.get(), dwSize);
+		}
+		CPykJsonRead read;
+		CPykJsonValueEx value;
+		if (!read.parse(p.get(), p.get() + dwSize, value))
+		{
+			return CPykJsonValueEx();
+		}
+		return value;
+	}
+#endif
 };
-
