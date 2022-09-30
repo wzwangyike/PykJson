@@ -152,36 +152,26 @@ protected:
 			switch (*pStr)
 			{
 			case '\\':
+				str += "\\\\";
+				break;
 			case '\"':
-			{
-				str += '\\';
-				str += *pStr;
+				str += "\\\"";
 				break;
-			}
 			case '\b':
-			{
-				str += '\\';
-				str += 'b';
+				str += "\\b";
 				break;
-			}
+			case '\f':
+				str += "\\f";
+				break;
 			case '\n':
-			{
-				str += '\\';
-				str += 'n';
+				str += "\\n";
 				break;
-			}
 			case '\r':
-			{
-				str += '\\';
-				str += 'r';
+				str += "\\r";
 				break;
-			}
 			case '\t':
-			{
-				str += '\\';
-				str += 't';
+				str += "\\t";
 				break;
-			}
 			default:
 				str += *pStr;
 				break;

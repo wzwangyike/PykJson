@@ -173,14 +173,24 @@ public:
 	bool Remove(T value, bool bAll = true)
 	{
 		if (this->m_pValue)
-			this->m_pValue->Remove(value, bAll);
+			return this->m_pValue->Remove(value, bAll);
+		return false;
 	}
 	bool Remove(const CPykJsonPointer &Value)
 	{
 		if (this->m_pValue && Value.m_pValue)
 		{
-			this->m_pValue->Remove(*Value.m_pValue, false);
+			return this->m_pValue->Remove(*Value.m_pValue, false);
 		}
+		return false;
+	}
+	bool RemoveByKeyAndName(const char *pKey, const char *pName, bool bAll = true)
+	{
+		if (this->m_pValue)
+		{
+			return this->m_pValue->RemoveByKeyAndName(pKey, pName, bAll);
+		}
+		return false;
 	}
 	//数组根据位置删除数据
 	bool RemoveItemByIndex(size_t nNum, CPykJsonPointer *pRemoved = NULL)
@@ -273,6 +283,13 @@ public:
 
 	void MoveCopy(const CPykJsonPointer &value)
 	{
+		if (!value.m_pValue)
+		{
+			this->Init();
+			*this->m_pValue = ValueType::nullValue;
+			return;
+		}
+		
 		this->Init();
 		*this->m_pValue = std::move(*value.m_pValue);
 	}

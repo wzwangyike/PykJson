@@ -399,7 +399,7 @@ public:
 		return !operator==(value);
 	}
 
-	//map 对象获取数据
+	// map 对象获取数据
 	CPykJsonValue *operator()(const char *pName)
 	{
 		assert(pName);
@@ -426,7 +426,7 @@ public:
 		return nullptr;
 	}
 
-	//map 对象获取数据，在没有匹配时返回新增数据
+	// map 对象获取数据，在没有匹配时返回新增数据
 	CPykJsonValue *operator[](const char *pName)
 	{
 		assert(pName);
@@ -615,7 +615,7 @@ public:
 			{
 				(*m_value.m_ver).push_back(*it);
 			}
-			
+
 			return true;
 		}
 		return false;
@@ -761,6 +761,35 @@ public:
 		return false;
 	}
 
+	bool RemoveByKeyAndName(const char *pKey, const char *pName, bool bAll = true)
+	{
+		if (ValueType::arrayValue == m_type)
+		{
+			for (auto it = (*m_value.m_ver).begin(); it != (*m_value.m_ver).end();)
+			{
+				if (ValueType::mapValue == it->GetType())
+				{
+					CPykJsonValue *pValue = it->Find(pKey);
+					if (pValue &&
+						ValueType::stringValue == pValue->m_type &&
+						0 == strcmp(pValue->m_value.m_string, pName))
+					{
+						it = (*m_value.m_ver).erase(it);
+						if (!bAll)
+						{
+							return true;
+						}
+						continue;
+					}
+				}
+
+				it++;
+			}
+			return true;
+		}
+		return false;
+	}
+
 	bool RemoveItemByIndex(size_t nNum, CPykJsonValue *removed)
 	{
 		if (ValueType::arrayValue == m_type)
@@ -791,7 +820,7 @@ public:
 	{
 		if (ValueType::mapValue == m_type)
 		{
-			#ifdef NO_SORT
+#ifdef NO_SORT
 			auto it = (*m_value.m_map).begin();
 			for (; it != (*m_value.m_map).end(); it++)
 			{
@@ -814,7 +843,7 @@ public:
 			int n = 0;
 			for (auto it = (*m_value.m_ver).begin(); it != (*m_value.m_ver).end(); n++, it++)
 			{
-				if (0 == strcmp((const char*)*it, pName))
+				if (0 == strcmp((const char *)*it, pName))
 				{
 					return &*it;
 				}
@@ -855,15 +884,19 @@ public:
 		return "";
 	}
 
-	CPykJsonValue *FindItemByKeyAndName(const char*pKey, const char* pName)
+	CPykJsonValue *FindItemByKeyAndName(const char *pKey, const char *pName)
 	{
 		if (ValueType::arrayValue == m_type)
 		{
-			int n = 0;
-			for (auto it = (*m_value.m_ver).begin(); it != (*m_value.m_ver).end(); n++, it++)
+			for (auto it = (*m_value.m_ver).begin(); it != (*m_value.m_ver).end(); it++)
 			{
-				CPykJsonValue* pValue = it->Find(pKey);
-				if (pValue && 
+				if (ValueType::mapValue != it->GetType())
+				{
+					continue;
+				}
+
+				CPykJsonValue *pValue = it->Find(pKey);
+				if (pValue &&
 					ValueType::stringValue == pValue->m_type &&
 					0 == strcmp(pValue->m_value.m_string, pName))
 				{
@@ -921,6 +954,12 @@ public:
 			{
 				memmove(lp, lp + 1, m_stringLen + 1 - (lp + 1 - m_value.m_string));
 				*lp = '\b';
+				break;
+			}
+			case 'f':
+			{
+				memmove(lp, lp + 1, m_stringLen + 1 - (lp + 1 - m_value.m_string));
+				*lp = '\f';
 				break;
 			}
 			case 't':
