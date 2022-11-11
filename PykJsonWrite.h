@@ -145,7 +145,11 @@ protected:
 			assert(false);
 		}
 	}
-	void DealJsonString(const char* pStr, std::string& str)
+	bool isControlCharacter(char ch)
+	{
+		return ch > 0 && ch <= 0x1F;
+	}
+	void DealJsonString(const char *pStr, std::string &str)
 	{
 		while (*pStr != '\0')
 		{
@@ -173,8 +177,19 @@ protected:
 				str += "\\t";
 				break;
 			default:
-				str += *pStr;
-				break;
+			{
+				if (isControlCharacter(*pStr))
+				{
+					char szTemp[7] = { 0 };
+					sprintf(szTemp, "\\u%0*X", 4, *pStr);
+					str += szTemp;
+				}
+				else
+				{
+					str += *pStr;
+				}
+			}
+			break;
 			}
 			pStr++;
 		}
