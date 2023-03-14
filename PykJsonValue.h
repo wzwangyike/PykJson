@@ -24,7 +24,10 @@ enum class ValueType
 	mapValue,	   ///< object value (collection of name/value pairs).
 	refValue	   ///< xref value (not own)
 };
-
+static bool isControlCharacter(char ch)
+{
+   return ch > 0 && ch <= 0x1F;
+}
 class CPykJsonValue
 {
 public:
@@ -264,8 +267,19 @@ public:
 					break;
 				}
 				default:
-					out << *pStr;
-					break;
+				{
+					if (isControlCharacter(*pStr))
+					{
+						char szTemp[7] = { 0 };
+						sprintf(szTemp, "\\u%0*X", 4, *pStr);
+						out << szTemp;
+					}
+					else
+					{
+						out << *pStr;
+					}
+				}
+				break;
 				}
 				pStr++;
 			}

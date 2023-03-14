@@ -145,10 +145,7 @@ protected:
 			assert(false);
 		}
 	}
-	bool isControlCharacter(char ch)
-	{
-		return ch > 0 && ch <= 0x1F;
-	}
+	
 	void DealJsonString(const char *pStr, std::string &str)
 	{
 		while (*pStr != '\0')
