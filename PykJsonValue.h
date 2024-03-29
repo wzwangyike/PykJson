@@ -5,7 +5,11 @@
 #include <map>
 #include <vector>
 #include <list>
+#ifdef WIN32
 #include <string>
+#else
+#include <string.h>
+#endif
 #include <assert.h>
 #ifdef SupportWideChar
 #include "PykMgr.h"
