@@ -3,6 +3,55 @@
 class JsonHelper
 {
 public:
+	static void GetJsonValueText(CPykJsonValueEx value, const std::vector<std::string> &vecLoopKey, std::string& str)
+	{
+		switch (value.GetType())
+		{
+			case ValueType::stringValue:
+			{
+				str += (const char*)value;
+				str += "\r";
+				break;
+			}
+			case ValueType::mapValue:
+			{
+				int nKeySize = vecLoopKey.size();
+				for (int i = 0; i < nKeySize; i++)
+				{
+					CPykJsonValueEx find = value(vecLoopKey[i].c_str());
+					if (find)
+					{
+						GetJsonValueText(find, vecLoopKey, str);
+					}
+				}
+				break;
+			}
+			case ValueType::arrayValue:
+			{
+				for (CPykJsonValueEx each : value)
+				{
+					GetJsonValueText(each, vecLoopKey, str);
+				}
+				break;
+			}
+		}
+		
+	}
+
+	static std::string GetJsonValueText(CPykJsonValueEx value, const char* pTopValue, const std::vector<std::string> &vecLoopKey)
+	{
+		std::string str;
+		for (CPykJsonValueEx each : value)
+		{
+			if (pTopValue)
+			{
+				each.Reset(each[pTopValue]);
+			}
+			GetJsonValueText(each, vecLoopKey, str);
+		}
+		return str;
+	}
+	
 	static CPykJsonValueEx GetJsonPos(CPykJsonValueEx jsonFind, CPykJsonValueEx howGet)
 	{
 		for (CPykJsonValueEx way : howGet)
@@ -28,7 +77,13 @@ public:
 					const char *value = way["Value"];
 					for (CPykJsonValueEx find : jsonFind)
 					{
-						if (0 == _stricmp(find[key], value))
+						if (0 == 
+#ifdef _WINDOWS
+						_stricmp
+#else
+						strcasecmp
+#endif
+						(find[key], value))
 						{
 							jsonFind.Reset(find);
 							break;
@@ -46,8 +101,8 @@ public:
 							{
 								if (strstr(find, sub))
 								{
-									str += find;
-									str += way["Connect"];
+									str += (const char*)find;
+									str += (const char*)way["Connect"];
 								}
 							}
 						}
@@ -91,7 +146,7 @@ public:
 #ifdef _WIN32
 		fopen_s(&fp, lpFilePath, "rb");
 #else
-		FILE *fp = fopen(lpFilePath, "rb");
+		fp = fopen(lpFilePath, "rb");
 #endif // _WIN32
 		if (!fp)
 		{
